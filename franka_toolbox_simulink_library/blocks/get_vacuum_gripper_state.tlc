@@ -1,0 +1,48 @@
+%%  Copyright (c) 2023 Franka Robotics GmbH - All Rights Reserved
+%%  This file is subject to the terms and conditions defined in the file
+%%  'LICENSE' , which is part of this package
+
+%implements "get_vacuum_gripper_state" "C"
+
+%function BlockTypeSetup(block, system) void
+  %<LibAddToCommonIncludes("robot_api.h")>
+  %<LibAddToCommonIncludes("vacuum_gripper_api.h")>
+%endfunction
+
+%% Function: Start ========================================================
+%% Abstract:
+%% Initialization code
+%function Start(block, system) Output
+
+%endfunction
+
+%% Function: Outputs ========================================================
+%% Abstract:
+%% Implement main code in C++
+%function Outputs(block, system) Output
+{
+  // vacuum_pressure
+  %<LibBlockOutputSignal(0,"", "", 0)> = static_cast<double>(simulinkFrankaVacuumGripper_%<SFcnParamSettings.robot_id>->getInControlRange());
+  // vacuum_power
+  %<LibBlockOutputSignal(1,"", "", 0)> = static_cast<double>(simulinkFrankaVacuumGripper_%<SFcnParamSettings.robot_id>->getPartDetached());
+  // vacuum_flow
+  %<LibBlockOutputSignal(2,"", "", 0)> = static_cast<double>(simulinkFrankaVacuumGripper_%<SFcnParamSettings.robot_id>->getPartPresent());
+  // vacuum_flow_peak
+  %<LibBlockOutputSignal(3,"", "", 0)> = static_cast<double>(simulinkFrankaVacuumGripper_%<SFcnParamSettings.robot_id>->getDeviceStatus());
+  // vacuum_flow_peak_time
+  %<LibBlockOutputSignal(4,"", "", 0)> = static_cast<double>(simulinkFrankaVacuumGripper_%<SFcnParamSettings.robot_id>->getCurrentActualPower());
+  // commands applied counter
+  %<LibBlockOutputSignal(5,"", "", 0)> = static_cast<double>(simulinkFrankaVacuumGripper_%<SFcnParamSettings.robot_id>->getCurrentSystemVacuum());
+  // time
+  %<LibBlockOutputSignal(6,"", "", 0)> = simulinkFrankaVacuumGripper_%<SFcnParamSettings.robot_id>->getTime().toSec();
+  // commands applied counter
+  %<LibBlockOutputSignal(7,"", "", 0)> = static_cast<double>(simulinkFrankaVacuumGripper_%<SFcnParamSettings.robot_id>->getGripperStateNewlyRead());
+}
+%endfunction
+
+%% Function: Terminate ========================================================
+%% Abstract:
+%% Finalization code
+%function Terminate(block, system) Output
+
+%endfunction 

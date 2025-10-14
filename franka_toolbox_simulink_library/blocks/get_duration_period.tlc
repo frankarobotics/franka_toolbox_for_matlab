@@ -1,0 +1,42 @@
+%%  Copyright (c) 2023 Franka Robotics GmbH - All Rights Reserved
+%%  This file is subject to the terms and conditions defined in the file
+%%  'LICENSE' , which is part of this package
+
+%implements "get_duration_period" "C"
+
+%function BlockTypeSetup(block, system) void
+  %<LibAddToCommonIncludes("robot_api.h")>
+%endfunction
+
+%% Function: Start ========================================================
+%% Abstract:
+%% Initialization code
+%function Start(block, system) Output
+{
+  %<LibBlockDWork(DWORK1, "", "", 0)> = (double)simulinkFrankaRobot_%<SFcnParamSettings.robot_id>.establishIfCurrentBlockFirstToBeComputed();
+}
+%endfunction
+
+%% Function: Outputs ========================================================
+%% Abstract:
+%% Implement main code in C++
+%function Outputs(block, system) Output
+{
+  if (simulinkFrankaRobot_%<SFcnParamSettings.robot_id>.getControlThreadHasBeenSpawned()) {
+    // Wait for the control thread signal
+    if ((bool)%<LibBlockDWork(DWORK1, "", "", 0)>) {simulinkFrankaRobot_%<SFcnParamSettings.robot_id>.waitForControlThreadStep();}
+
+    // If control loop threw exeption terminate execution
+    simulinkFrankaRobot_%<SFcnParamSettings.robot_id>.checkIfAndHandleException();
+
+    %<LibBlockOutputSignal(0,"", "", 0)> = simulinkFrankaRobot_%<SFcnParamSettings.robot_id>.getSampleTime();
+  }
+}
+%endfunction
+
+%% Function: Terminate ========================================================
+%% Abstract:
+%% Finalization code
+%function Terminate(block, system) Output
+
+%endfunction

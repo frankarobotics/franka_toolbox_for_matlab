@@ -1,0 +1,29 @@
+classdef FrankaRobotSettings
+    %  Copyright (c) 2023 Franka Robotics GmbH - All Rights Reserved
+    %  This file is subject to the terms and conditions defined in the file
+    %  'LICENSE' , which is part of this package
+    properties
+      robot_ip  = '172.16.0.2'
+      collision_thresholds = FrankaRobotCollisionThresholds
+      home_configuration = [0, -pi/4, 0, -3 * pi/4, 0, pi/2, pi/4]
+      home_configuration_O_T_EE = [0.707 -0.707 -0.0  0.3071;...
+                                   -0.707 -0.707 -0.0 -0.0;...
+                                   -0.0    0.0    -1    0.59;...
+                                    0      0      0    1]'
+      rate_limiter = true;
+      cutoff_frequency = 100.0;
+      joint_impedance_stiffness = [3000, 3000, 3000, 2500, 2500, 2000, 2000]
+      cartesian_impedance_stiffness = [3000, 3000, 3000, 300, 300, 300]
+      % Flange-to-end-effector transformation `F_T_EE`is split up into two transformations:
+      % `F_T_NE`, only settable in Desk, and `NE_T_EE`
+      NE_T_EE = [ 1 0 0 0;...
+                  0 1 0 0;...
+                  0 0 1 0;...
+                  0 0 0 1];  %transformation between the from nominal end effector to end effector frame.
+      EE_T_K = [1 0 0 0;...
+                0 1 0 0;...
+                0 0 1 0;...
+                0 0 0 1];  %transformation between then end effector frame to stiffness frame
+      load_inertia = FrankaRobotLoadInertia
+    end
+end

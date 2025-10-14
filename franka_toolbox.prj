@@ -1,0 +1,151 @@
+<deployment-project plugin="plugin.toolbox" plugin-version="1.0">
+  <configuration build-checksum="1009126672" file="/home/kvasios/franka_matlab/franka_toolbox.prj" location="/home/kvasios/franka_matlab" name="franka_toolbox" target="target.toolbox" target-name="Package Toolbox">
+    <param.appname>Franka Toolbox for MATLAB</param.appname>
+    <param.authnamewatermark>Franka Robotics GmbH</param.authnamewatermark>
+    <param.email>info@franka.de</param.email>
+    <param.company>Franka Robotics GmbH</param.company>
+    <param.summary>The Franka Toolbox for MATLAB contains a set of  Matlab &amp; Simulink libraries for interfacing the Franka Robot.</param.summary>
+    <param.description />
+    <param.screenshot>${PROJECT_ROOT}/data/images/franka_robot_no_ee_4_3.png</param.screenshot>
+    <param.version>3.1.0</param.version>
+    <param.output>${PROJECT_ROOT}/Franka Toolbox for MATLAB.mltbx</param.output>
+    <param.products.name>
+      <item>MATLAB</item>
+      <item>Simulink</item>
+      <item>MATLAB Coder</item>
+      <item>Simulink Coder</item>
+    </param.products.name>
+    <param.products.id>
+      <item>1</item>
+      <item>2</item>
+      <item>135</item>
+      <item>14</item>
+    </param.products.id>
+    <param.products.version>
+      <item>24.1</item>
+      <item>24.1</item>
+      <item>24.1</item>
+      <item>24.1</item>
+    </param.products.version>
+    <param.platforms />
+    <param.guid>36861653-1081-46df-aedd-6ae570ddebac</param.guid>
+    <param.exclude.filters>libfranka/
+.git/
+.gitignore
+CHANGELOG.md
+franka_toolbox_dist_make.m
+*.bak</param.exclude.filters>
+    <param.exclude.pcodedmfiles>true</param.exclude.pcodedmfiles>
+    <param.examples />
+    <param.demosxml />
+    <param.apps />
+    <param.registered.apps />
+    <param.docs />
+    <param.getting.started.guide>${PROJECT_ROOT}/doc/GettingStarted.mlx</param.getting.started.guide>
+    <param.matlabpath.excludes>
+      <item>/.franka_toolbox_util</item>
+    </param.matlabpath.excludes>
+    <param.javaclasspath.excludes />
+    <param.exported.on.package>false</param.exported.on.package>
+    <param.required.addons />
+    <param.matlab.project.id />
+    <param.matlab.project.name />
+    <param.release.start>R2022a</param.release.start>
+    <param.release.end>latest</param.release.end>
+    <param.release.current.only>false</param.release.current.only>
+    <param.compatiblity.windows>true</param.compatiblity.windows>
+    <param.compatiblity.macos>false</param.compatiblity.macos>
+    <param.compatiblity.linux>true</param.compatiblity.linux>
+    <param.compatiblity.matlabonline>false</param.compatiblity.matlabonline>
+    <param.installation.map />
+    <param.additional.sw.names />
+    <param.additional.sw.licenses />
+    <param.additional.sw.win.url />
+    <param.additional.sw.mac.url />
+    <param.additional.sw.linux.url />
+    <unset>
+      <param.description />
+      <param.output />
+      <param.platforms />
+      <param.exclude.pcodedmfiles />
+      <param.examples />
+      <param.demosxml />
+      <param.apps />
+      <param.registered.apps />
+      <param.docs />
+      <param.javaclasspath.excludes />
+      <param.exported.on.package />
+      <param.required.addons />
+      <param.matlab.project.id />
+      <param.matlab.project.name />
+      <param.release.current.only />
+      <param.compatiblity.windows />
+      <param.compatiblity.linux />
+      <param.installation.map />
+      <param.additional.sw.names />
+      <param.additional.sw.licenses />
+      <param.additional.sw.win.url />
+      <param.additional.sw.mac.url />
+      <param.additional.sw.linux.url />
+    </unset>
+    <fileset.rootdir>
+      <file>${PROJECT_ROOT}</file>
+    </fileset.rootdir>
+    <fileset.rootfiles>
+      <file>${PROJECT_ROOT}/.github</file>
+      <file>${PROJECT_ROOT}/LICENCE</file>
+      <file>${PROJECT_ROOT}/README.md</file>
+      <file>${PROJECT_ROOT}/common</file>
+      <file>${PROJECT_ROOT}/config</file>
+      <file>${PROJECT_ROOT}/data</file>
+      <file>${PROJECT_ROOT}/dependencies</file>
+      <file>${PROJECT_ROOT}/dist</file>
+      <file>${PROJECT_ROOT}/doc</file>
+      <file>${PROJECT_ROOT}/docs</file>
+      <file>${PROJECT_ROOT}/examples</file>
+      <file>${PROJECT_ROOT}/franka_robot</file>
+      <file>${PROJECT_ROOT}/franka_robot_server</file>
+      <file>${PROJECT_ROOT}/franka_toolbox_simulink_library</file>
+      <file>${PROJECT_ROOT}/scripts</file>
+    </fileset.rootfiles>
+    <fileset.depfun.included />
+    <fileset.depfun.excluded />
+    <fileset.package />
+    <build-deliverables>
+      <file location="${PROJECT_ROOT}" name="Franka Toolbox for MATLAB.mltbx" optional="false">/home/kvasios/franka_matlab/Franka Toolbox for MATLAB.mltbx</file>
+    </build-deliverables>
+    <workflow />
+    <matlab>
+      <root>/usr/local/MATLAB/R2024a</root>
+      <toolboxes>
+        <toolbox name="matlabcoder" />
+        <toolbox name="embeddedcoder" />
+      </toolboxes>
+      <toolbox>
+        <matlabcoder>
+          <enabled>true</enabled>
+        </matlabcoder>
+      </toolbox>
+      <toolbox>
+        <embeddedcoder>
+          <enabled>true</enabled>
+        </embeddedcoder>
+      </toolbox>
+    </matlab>
+    <platform>
+      <unix>true</unix>
+      <mac>false</mac>
+      <windows>false</windows>
+      <win2k>false</win2k>
+      <winxp>false</winxp>
+      <vista>false</vista>
+      <linux>true</linux>
+      <solaris>false</solaris>
+      <osver>6.8.0-60-generic</osver>
+      <os32>false</os32>
+      <os64>true</os64>
+      <arch>glnxa64</arch>
+      <matlab>true</matlab>
+    </platform>
+  </configuration>
+</deployment-project>

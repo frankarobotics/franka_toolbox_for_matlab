@@ -1,0 +1,44 @@
+%%  Copyright (c) 2023 Franka Robotics GmbH - All Rights Reserved
+%%  This file is subject to the terms and conditions defined in the file
+%%  'LICENSE' , which is part of this package
+
+%implements "get_gripper_state" "C"
+
+%function BlockTypeSetup(block, system) void
+  %<LibAddToCommonIncludes("robot_api.h")>
+  %<LibAddToCommonIncludes("gripper_api.h")>
+%endfunction
+
+%% Function: Start ========================================================
+%% Abstract:
+%% Initialization code
+%function Start(block, system) Output
+
+%endfunction
+
+%% Function: Outputs ========================================================
+%% Abstract:
+%% Implement main code in C++
+%function Outputs(block, system) Output
+{
+  // width
+  %<LibBlockOutputSignal(0,"", "", 0)> = simulinkFrankaGripper_%<SFcnParamSettings.robot_id>->getGripperWidth();
+  // max_width
+  %<LibBlockOutputSignal(1,"", "", 0)> = simulinkFrankaGripper_%<SFcnParamSettings.robot_id>->getGripperMaxWidth();
+  // is_grasped
+  %<LibBlockOutputSignal(2,"", "", 0)> = simulinkFrankaGripper_%<SFcnParamSettings.robot_id>->getGripperIsGrasped();
+  // gripper grasp failed
+  %<LibBlockOutputSignal(3,"", "", 0)> = simulinkFrankaGripper_%<SFcnParamSettings.robot_id>->getGripperGraspFailed();
+  // temperature
+  %<LibBlockOutputSignal(4,"", "", 0)> = simulinkFrankaGripper_%<SFcnParamSettings.robot_id>->getGripperTemperature();
+  // commands applied counter
+  %<LibBlockOutputSignal(5,"", "", 0)> = (double)simulinkFrankaGripper_%<SFcnParamSettings.robot_id>->getGripperStateNewlyRead();
+}
+%endfunction
+
+%% Function: Terminate ========================================================
+%% Abstract:
+%% Finalization code
+%function Terminate(block, system) Output
+
+%endfunction

@@ -1,0 +1,57 @@
+%%  Copyright (c) 2024 Franka Robotics GmbH - All Rights Reserved
+%%  This file is subject to the terms and conditions defined in the file
+%%  'LICENSE' , which is part of this package
+%implements "get_pose" "C"
+
+%function BlockTypeSetup(block, system) void
+  %<LibAddToCommonIncludes("robot_api.h")>
+  %<LibAddToCommonIncludes("franka/model.h")>
+%endfunction
+
+%% Function: Start ========================================================
+%% Abstract:
+%% Initialization code
+%function Start(block, system) Output
+{
+  %assign robot_ip = FEVAL("erase",ParamSettings.robot_ip,"'")
+  %assign robot_ip = FEVAL("strtrim",robot_ip)
+
+  %assign robot_id = FEVAL("erase",ParamSettings.robot_id,"'")
+  %assign robot_id = FEVAL("strtrim",robot_id)
+
+  %<LibBlockDWork(DWORK1, "", "", 0)> = (double)simulinkFrankaRobot_%<robot_id>.establishIfCurrentBlockFirstToBeComputed();
+}
+%endfunction
+
+%% Function: Outputs ========================================================
+%% Abstract:
+%% Implement main code in C++
+%function Outputs(block, system) Output
+{
+
+  %assign robot_id = FEVAL("erase",ParamSettings.robot_id,"'")
+  %assign robot_id = FEVAL("strtrim",robot_id)
+
+
+  if (simulinkFrankaRobot_%<robot_id>.getControlThreadHasBeenSpawned()) {
+    
+    // Wait for the control thread signal
+    if ((bool)%<LibBlockDWork(DWORK1, "", "", 0)>) {simulinkFrankaRobot_%<robot_id>.waitForControlThreadStep();}
+
+    // If control loop threw exeption terminate execution
+    simulinkFrankaRobot_%<robot_id>.checkIfAndHandleException();
+
+    // pose
+    %if ParamSettings.robot_state_only[0][0]
+        simulinkFrankaRobot_%<robot_id>.copyRobotPose(%<ParamSettings.frame[0][0]>, %<LibBlockOutputSignalAddr(0,"", "", 0)>);
+    %else
+        simulinkFrankaRobot_%<robot_id>.copyRobotPose(%<ParamSettings.frame[0][0]>,
+                                                        %<LibBlockInputSignalAddr(0,"", "", 0)>,
+                                                        %<LibBlockInputSignalAddr(1,"", "", 0)>,
+                                                        %<LibBlockInputSignalAddr(2,"", "", 0)>,
+                                                        %<LibBlockOutputSignalAddr(0,"", "", 0)>);
+    %endif
+
+  }
+}
+%endfunction

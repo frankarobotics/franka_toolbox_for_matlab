@@ -1,0 +1,130 @@
+%%  Copyright (c) 2025 Franka Robotics GmbH - All Rights Reserved
+%%  This file is subject to the terms and conditions defined in the file
+%%  'LICENSE' , which is part of this package
+%implements "apply_control" "C"
+
+%function BlockTypeSetup(block, system) void
+  %<LibAddToCommonIncludes("control_modes.h")>
+  %if ParamSettings.gripper_attached[0][0] == 1
+  %<LibAddToCommonIncludes("gripper_api.h")>
+  %endif
+  %if ParamSettings.vacuum_gripper_attached[0][0] == 1
+  %<LibAddToCommonIncludes("vacuum_gripper_api.h")>
+  %endif
+%endfunction
+
+%% Function: BlockInstanceData ===============================
+%% Abstract:
+%function BlockInstanceSetup(block, system) Output
+{   
+    %assign robot_id = FEVAL("erase",ParamSettings.robot_id,"'")
+    %assign robot_id = FEVAL("strtrim",robot_id)
+    
+    %openfile buffer
+        SimulinkFrankaRobot simulinkFrankaRobot_%<robot_id>;
+        %if ParamSettings.gripper_attached[0][0] == 1
+        std::unique_ptr<SimulinkFrankaGripper> simulinkFrankaGripper_%<robot_id>;
+        %endif
+        %if ParamSettings.vacuum_gripper_attached[0][0] == 1
+        std::unique_ptr<SimulinkFrankaVacuumGripper> simulinkFrankaVacuumGripper_%<robot_id>;
+        %endif
+    %closefile buffer
+    %<LibCacheGlobalPrmData(buffer)>
+}
+%endfunction
+
+%% Function: Start ========================================================
+%% Abstract:
+%% Initialization code
+%function Start(block, system) Output
+{
+      
+   %assign robot_ip = FEVAL("erase",ParamSettings.robot_ip,"'")
+   %assign robot_ip = FEVAL("strtrim",robot_ip)
+   
+   %assign robot_id = FEVAL("erase",ParamSettings.robot_id,"'")
+   %assign robot_id = FEVAL("strtrim",robot_id)
+   
+   simulinkFrankaRobot_%<robot_id> = SimulinkFrankaRobot("%<robot_ip>",
+                                                          %<ParamSettings.gripper_attached[0][0]> + %<ParamSettings.vacuum_gripper_attached[0][0]>,
+                                                          %<ParamSettings.control_mode[0][0]> -1,
+                                                          %<ParamSettings.controller_choice[0][0]>,
+                                                          %<LibBlockParameterAddr(MSFcnParameter5, "", "", 0)>,
+                                                          %<LibBlockParameterAddr(MSFcnParameter6, "", "", 0)>,
+                                                          %<LibBlockParameterAddr(MSFcnParameter7, "", "", 0)>,
+                                                          %<LibBlockParameterAddr(MSFcnParameter8, "", "", 0)>,
+                                                          %<LibBlockParameterAddr(MSFcnParameter9, "", "", 0)>,
+                                                          %<LibBlockParameterAddr(MSFcnParameter10, "", "", 0)>,
+                                                          %<ParamSettings.init_joint_configuration_req[0][0]>,
+                                                          %<LibBlockParameterAddr(MSFcnParameter12, "", "", 0)>,
+                                                          %<ParamSettings.elbow_control[0][0]>,
+                                                          %<ParamSettings.rate_limiter[0][0]>,
+                                                          %<ParamSettings.cutoff_frequency[0][0]>);
+  
+    %if ParamSettings.gripper_attached[0][0] == 1
+    simulinkFrankaGripper_%<robot_id> = std::make_unique<SimulinkFrankaGripper>("%<robot_ip>");
+    %endif
+
+    %if ParamSettings.vacuum_gripper_attached[0][0] == 1
+    simulinkFrankaVacuumGripper_%<robot_id> = std::make_unique<SimulinkFrankaVacuumGripper>("%<robot_ip>");
+    %endif
+
+    //Flag for performing initialization in first run of main _step();
+    %<LibBlockDWork(DWORK1, "", "", 0)> = 0;
+    %<LibBlockDWork(DWORK2, "", "", 0)> = (double)simulinkFrankaRobot_%<robot_id>.establishIfCurrentBlockFirstToBeComputed();
+} 
+%endfunction
+
+%% Function: Outputs ========================================================
+%% Abstract:
+%% Implement main code in C++
+%function Outputs(block, system) Output
+{
+    %assign robot_id = FEVAL("erase",ParamSettings.robot_id,"'")
+    %assign robot_id = FEVAL("strtrim",robot_id)
+        
+    /* %<Type> Block: %<Name> */
+    
+     if ((bool)%<LibBlockDWork(DWORK1, "", "", 0)>) {
+    
+        // Wait for the control thread signal
+        if ((bool)%<LibBlockDWork(DWORK2, "", "", 0)>) {
+            simulinkFrankaRobot_%<robot_id>.waitForControlThreadStep();}
+
+        // If control loop threw exeption terminate execution
+        simulinkFrankaRobot_%<robot_id>.checkIfAndHandleException();
+
+        // copy inputs
+        %if ParamSettings.gripper_attached[0][0] == 1
+        simulinkFrankaGripper_%<robot_id>->parseGripperCommand(%<LibBlockInputSignalAddr(0,"", "", 0)>);
+        simulinkFrankaGripper_%<robot_id>->applyGripperCommand();
+        %endif
+
+        %if ParamSettings.vacuum_gripper_attached[0][0] == 1
+        simulinkFrankaVacuumGripper_%<robot_id>->parseGripperCommand(%<LibBlockInputSignalAddr(0,"", "", 0)>);
+        simulinkFrankaVacuumGripper_%<robot_id>->applyGripperCommand();
+        %endif
+
+        %foreach portIdx = NumDataInputPorts
+        %if ParamSettings.gripper_attached[0][0] == 1 && portIdx == 0
+        %elseif ParamSettings.vacuum_gripper_attached[0][0] == 1 && portIdx == 0
+        %else 
+            simulinkFrankaRobot_%<robot_id>.copyInputSignal(%<LibBlockInputSignalAddr(portIdx,"", "", 0)>, %<portIdx>);
+        %endif
+        %endforeach
+
+        // notify control thread that the inputs have been read
+        simulinkFrankaRobot_%<robot_id>.notifyControlThreadToContinue();
+
+    }else if (!(bool)%<LibBlockDWork(DWORK1, "", "", 0)>) {
+
+        // Its the first time _step() function is called --> 
+        // Initialize according to settings parsed from the mask
+        // and spawn control thread
+        simulinkFrankaRobot_%<robot_id>.applyRobotSettings();
+        simulinkFrankaRobot_%<robot_id>.spawnControlThread();
+
+        %<LibBlockDWork(DWORK1, "", "", 0)> = 1;
+   }
+}
+%endfunction

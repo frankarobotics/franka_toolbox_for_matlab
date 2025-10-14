@@ -1,0 +1,165 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]*'  # Triggers on version tags like 1.0.0, 2.1.3, etc.
+  workflow_dispatch:  # Allows manual triggering from GitHub UI
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.0)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write  # Required for creating releases and uploading assets
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch all history for proper tagging
+    
+    - name: Set version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          # Extract version from tag (e.g., 1.0.0)
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Check if distribution file exists
+      id: check-dist
+      run: |
+        if [ -f "dist/franka.mltbx" ]; then
+          echo "exists=true" >> $GITHUB_OUTPUT
+          echo "size=$(du -h dist/franka.mltbx | cut -f1)" >> $GITHUB_OUTPUT
+        else
+          echo "exists=false" >> $GITHUB_OUTPUT
+          echo "Distribution file not found! Please ensure franka.mltbx is built and committed."
+          exit 1
+        fi
+    
+    - name: Extract changelog entry
+      id: changelog
+      run: |
+        # Extract the changelog entry for this version from CHANGELOG.md
+        VERSION="${{ steps.version.outputs.version }}"
+        
+        # Check if CHANGELOG.md exists
+        if [ ! -f "CHANGELOG.md" ]; then
+          echo "CHANGELOG.md not found, creating basic release notes"
+          cat > RELEASE_NOTES.md << EOF
+        ## Installation
+        
+        Download the \`franka.mltbx\` file from the assets below and install it in MATLAB:
+        
+        1. Double-click the \`franka.mltbx\` file, or
+        2. In MATLAB, go to **Home** > **Add-Ons** > **Install Add-On** and select the file
+        
+        ## Documentation
+        
+        For detailed documentation, examples, and API reference, visit: [Franka Toolbox for MATLAB Documentation](https://frankarobotics.github.io/docs/franka_toolbox_for_matlab/docs/index.html#)
+        
+        ## File Information
+        
+        - **File**: franka.mltbx
+        - **Size**: ${{ steps.check-dist.outputs.size }}
+        - **Version**: $VERSION
+        EOF
+        else
+          # Extract the changelog entry for this version
+          echo "Looking for version $VERSION in CHANGELOG.md"
+          
+          # Use sed to extract the section - more reliable than awk
+          # Find the line starting with "## $VERSION" and extract until next "## " line
+          sed -n "/^## $VERSION/,/^## [0-9]/p" CHANGELOG.md | sed '$d' > VERSION_CHANGELOG.md
+          
+          # Check if we got content
+          if [ -s VERSION_CHANGELOG.md ] && [ $(wc -l < VERSION_CHANGELOG.md) -gt 1 ]; then
+            echo "Successfully extracted changelog for version $VERSION"
+            echo "Extracted content:"
+            cat VERSION_CHANGELOG.md
+          else
+            echo "Version $VERSION not found in CHANGELOG.md, creating basic release notes"
+            cat > VERSION_CHANGELOG.md << EOF
+        ## Installation
+        
+        Download the \`franka.mltbx\` file from the assets below and install it in MATLAB:
+        
+        1. Double-click the \`franka.mltbx\` file, or
+        2. In MATLAB, go to **Home** > **Add-Ons** > **Install Add-On** and select the file
+        
+        ## Documentation
+        
+        For detailed documentation, examples, and API reference, visit: [Franka Toolbox for MATLAB Documentation](https://frankarobotics.github.io/docs/franka_toolbox_for_matlab/docs/index.html#)
+        
+        ## File Information
+        
+        - **File**: franka.mltbx
+        - **Size**: ${{ steps.check-dist.outputs.size }}
+        - **Version**: $VERSION
+        EOF
+          fi
+          
+          # Create final release notes
+          cat > RELEASE_NOTES.md << EOF
+        $(cat VERSION_CHANGELOG.md)
+        
+        ## Installation
+        
+        Download the \`franka.mltbx\` file from the assets below and install it in MATLAB:
+        
+        1. Double-click the \`franka.mltbx\` file, or
+        2. In MATLAB, go to **Home** > **Add-Ons** > **Install Add-On** and select the file
+        
+        ## Documentation
+        
+        For detailed documentation, examples, and API reference, visit: [Franka Toolbox for MATLAB Documentation](https://frankarobotics.github.io/docs/franka_toolbox_for_matlab/docs/index.html#)
+        
+        ## File Information
+        
+        - **File**: franka.mltbx
+        - **Size**: ${{ steps.check-dist.outputs.size }}
+        - **Version**: $VERSION
+        EOF
+        fi
+        
+        echo "changelog<<EOF" >> $GITHUB_OUTPUT
+        cat RELEASE_NOTES.md >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+    
+    - name: Create Release
+      id: create_release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.version.outputs.version }}
+        name: Franka Toolbox for MATLAB ${{ steps.version.outputs.version }}
+        body: ${{ steps.changelog.outputs.changelog }}
+        draft: false
+        prerelease: ${{ github.event.inputs.prerelease || false }}
+        files: |
+          dist/franka.mltbx
+          CHANGELOG.md
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Summary
+      run: |
+        echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- **Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Distribution File**: franka.mltbx (${{ steps.check-dist.outputs.size }})" >> $GITHUB_STEP_SUMMARY
+        echo "- **Release URL**: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Pre-release**: ${{ github.event.inputs.prerelease || false }}" >> $GITHUB_STEP_SUMMARY
