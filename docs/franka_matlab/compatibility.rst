@@ -14,4 +14,4 @@ Compatibility with Matlab & libfranka
 
 .. important::
     Check the `Matlab System Requirements <https://www.mathworks.com/support/requirements/previous-releases.html>`_ for your Host PC OS compatibility
-    as well as the `libfranka and robot system compatibility <https://frankaemika.github.io/docs/compatibility.html>`_.
+    as well as the `libfranka and robot system compatibility <https://frankarobotics.github.io/docs/compatibility.html>`_.

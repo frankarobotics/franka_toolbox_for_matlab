@@ -54,7 +54,7 @@ function wontdo = franka_toolbox_libfranka_build(libfranka_version,force_install
     
     libfranka_path = fullfile(installation_path, folder_name);
     libfranka_build_path = fullfile(libfranka_path,'build');
-    franka_toolbox_system_cmd(['git clone --recursive https://github.com/frankaemika/libfranka ',folder_name],installation_path,true);
+    franka_toolbox_system_cmd(['git clone --recursive https://github.com/frankarobotics/libfranka ',folder_name],installation_path,true);
     franka_toolbox_system_cmd(['git checkout ',libfranka_version],libfranka_path,true);
     franka_toolbox_system_cmd('git submodule update',libfranka_path,true);
     

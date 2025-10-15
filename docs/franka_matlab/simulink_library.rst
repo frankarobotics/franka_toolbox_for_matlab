@@ -4,7 +4,7 @@ Fanka Library for Simulink - Reference
 .. hint::
     Regarding the input/output signal nomenclature, datatypes, and sizes, the libfranka definitions
     have been fully adopted. You can find the complete list of signals
-    `here <https://frankarobotics.github.io/libfranka/0.15.0/structfranka_1_1RobotState.html>`_.
+    `here <https://frankarobotics.github.io/libfranka/0.16.1/structfranka_1_1RobotState.html>`_.
     The column-major format for signals has been adopted as well.
 
 Robot Control
@@ -43,7 +43,7 @@ Robot State
 
 For reading the desired set of signals stemming from the current robot state,
 you can free-type the names of the signals in the `Parameters` pane of the block parameters.
-For the set of available signals and their namings --> `Robot State Attributes <https://frankarobotics.github.io/libfranka/structfranka_1_1RobotState.html>`_
+For the set of available signals and their namings --> `Robot State Attributes <https://frankarobotics.github.io/libfranka/0.16.1/structfranka_1_1RobotState.html>`_
 
 .. figure:: _static/get_robot_state_settings.png
     :align: center

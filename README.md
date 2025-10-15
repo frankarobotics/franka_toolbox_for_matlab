@@ -1,6 +1,6 @@
 # Franka Toolbox for MATLAB: Matlab & Simulink library for Franka Robotics research robots
 
-A Simulink & Matlab library and tools for the Franka Robotics Robots based on the [Franka Control Interface (FCI)](https://frankaemika.github.io/docs/). See the [documentation page](https://frankaemika.github.io/docs/franka_matlab/index.html) for more information.
+A Simulink & Matlab library and tools for the Franka Robotics Robots based on the [Franka Control Interface (FCI)](https://frankarobotics.github.io/docs/). See the [documentation page](https://frankarobotics.github.io/docs/franka_matlab/index.html) for more information.
 
 The repository includes a complete franka.mtlbx distribution (including pre-built binaries) which you can find either under the `dist` folder or in the github release page.
 
@@ -43,7 +43,7 @@ You can alternatively build the project for your own machine configuration follo
         ```
 
 - Target PC: Host PC Linux or Jetson platform connected
-    - libfranka's 3d party dependencies (based on libfranka's version). Refer to the [Documentation](https://github.com/frankaemika/libfranka/blob/main/README.md) for more information. The dependencies in the local Linux native target PC (not AI Companion) should be installed in the native system and not in a container. For the AI compantion a running container can be targeted as well.
+    - libfranka's 3d party dependencies (based on libfranka's version). Refer to the [Documentation](https://github.com/frankarobotics/libfranka/blob/main/README.md) for more information. The dependencies in the local Linux native target PC (not AI Companion) should be installed in the native system and not in a container. For the AI compantion a running container can be targeted as well.
     - ssh keys setup for connection without password request.
     - Cap'n Proto (build static library):
         ```bash
