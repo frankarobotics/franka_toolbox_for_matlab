@@ -1,6 +1,6 @@
 # Franka Toolbox for MATLAB: Matlab & Simulink library for Franka Robotics research robots
 
-A Simulink & Matlab library and tools for the Franka Robotics Robots based on the [Franka Control Interface (FCI)](https://frankarobotics.github.io/docs/). See the [documentation page](https://frankarobotics.github.io/docs/franka_matlab/index.html) for more information.
+A Simulink & Matlab library and tools for the Franka Robotics Robots based on the [Franka Control Interface (FCI)](https://frankarobotics.github.io/docs/). See the [documentation page](https://frankarobotics.github.io/docs/franka_toolbox_for_matlab/docs/franka_matlab/index.html) for more information.
 
 The repository includes a complete franka.mtlbx distribution (including pre-built binaries) which you can find either under the `dist` folder or in the github release page.
 
