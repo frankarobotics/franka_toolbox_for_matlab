@@ -30,14 +30,15 @@ RUN apt-get update && apt-get install -y \
     liburdfdom-headers-dev \
     liboctomap-dev \
     libboost-all-dev \
+    libtinyxml2-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Build and install Pinocchio 2.7.1 (required by libfranka)
+# Build and install Pinocchio 3.4.0 (required by libfranka)
 # Only clone the cmake submodule, skip robot-data which is huge and unnecessary
 RUN git clone https://github.com/stack-of-tasks/pinocchio /opt/pinocchio && \
     cd /opt/pinocchio && \
-    git checkout v2.7.1 && \
+    git checkout v3.4.0 && \
     git submodule update --init cmake && \
     mkdir build && \
     cd build && \
@@ -57,10 +58,10 @@ RUN git clone https://github.com/stack-of-tasks/pinocchio /opt/pinocchio && \
     ldconfig
 
 # Set environment variables for pinocchio
-ENV PATH=/usr/local/bin:$PATH
-ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
-ENV LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
-ENV CMAKE_PREFIX_PATH=/usr/local:$CMAKE_PREFIX_PATH
+ENV PATH=/usr/local/bin:${PATH}
+ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:${PKG_CONFIG_PATH}
+ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
+ENV CMAKE_PREFIX_PATH=/usr/local:${CMAKE_PREFIX_PATH}
 
 # Build and install Cap'n Proto (static library)
 ARG CAPNP_VERSION=1.1.0
