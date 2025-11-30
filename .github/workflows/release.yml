@@ -1,4 +1,12 @@
-name: Create Release
+# Quick Release Workflow
+# ----------------------
+# This workflow creates a GitHub release using a PRE-BUILT franka.mltbx file
+# that already exists in the dist/ folder. Use this for quick releases when
+# all binaries are already built and committed.
+#
+# For full automated builds (Docker + MEX + packaging), use build-and-release.yml instead.
+
+name: Quick Release (Pre-built)
 
 on:
   push:

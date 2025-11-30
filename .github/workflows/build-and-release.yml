@@ -1,0 +1,515 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]*'  # Triggers on version tags like 1.0.0, 4.0.0, etc.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 4.0.0)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        default: false
+        type: boolean
+
+# Note: MATLAB batch licensing token (MLM_LICENSE_TOKEN) is only needed if:
+#   - The repository is private, OR
+#   - The workflow uses transformation products (MATLAB Coder, MATLAB Compiler)
+# For public repos without these products, no token is required.
+
+permissions:
+  contents: write  # Required for creating releases and uploading assets
+
+jobs:
+  # =============================================================================
+  # Job 1: Build server binaries using Docker (amd64 + arm64)
+  # =============================================================================
+  build-server:
+    name: Build Server Binaries (Docker)
+    runs-on: ubuntu-22.04
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Set up QEMU for ARM64 cross-compilation
+      uses: docker/setup-qemu-action@v3
+      with:
+        platforms: arm64
+    
+    - name: Make build scripts executable
+      run: |
+        chmod +x docker/build.sh
+        chmod +x docker/scripts/*.sh
+    
+    - name: Build server binaries (amd64 + arm64)
+      run: |
+        cd docker
+        ./build.sh all
+    
+    - name: Verify build outputs
+      run: |
+        echo "=== Build Outputs ==="
+        ls -la common/*.zip || echo "No common/*.zip files"
+        ls -la franka_robot_server/*.tar.gz || echo "No server tar.gz files"
+        ls -la dependencies/*.zip || echo "No dependencies/*.zip files"
+    
+    - name: Upload server artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: server-binaries
+        path: |
+          common/bin.zip
+          common/bin_arm.zip
+          franka_robot_server/bin.tar.gz
+          franka_robot_server/bin_arm.tar.gz
+          dependencies/libfranka.zip
+          dependencies/libfranka_arm.zip
+        retention-days: 7
+
+  # =============================================================================
+  # Job 2a: Build MEX files on Ubuntu 22.04 with MATLAB R2022a
+  # =============================================================================
+  build-mex-linux:
+    name: Build MEX (Linux R2022a)
+    runs-on: ubuntu-22.04
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake build-essential libeigen3-dev
+    
+    - name: Install Cap'n Proto from source (static libraries)
+      run: |
+        # Build Cap'n Proto as STATIC libraries for static linking into MEX files
+        # This ensures users don't need Cap'n Proto installed
+        # PIC flag required for linking into shared objects (MEX files)
+        CAPNP_VERSION="1.0.2"
+        
+        cd /tmp
+        curl -O https://capnproto.org/capnproto-c++-${CAPNP_VERSION}.tar.gz
+        tar zxf capnproto-c++-${CAPNP_VERSION}.tar.gz
+        cd capnproto-c++-${CAPNP_VERSION}
+        
+        mkdir build && cd build
+        cmake \
+          -DBUILD_TESTING=OFF \
+          -DBUILD_SHARED_LIBS=OFF \
+          -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+          -DCMAKE_INSTALL_PREFIX=/usr/local \
+          ..
+        make -j$(nproc)
+        sudo make install
+        sudo ldconfig
+        
+        # Verify static libraries
+        capnp --version
+        echo "=== Static libraries (for linking into MEX) ==="
+        ls -la /usr/local/lib/libcapnp*.a /usr/local/lib/libkj*.a 2>/dev/null || echo "Warning: .a files not found"
+        echo "=== Headers ==="
+        ls /usr/local/include/capnp/ | head -5
+    
+    - name: Set up MATLAB R2022a
+      uses: matlab-actions/setup-matlab@v2
+      with:
+        release: R2022a
+        products: |
+          MATLAB
+          Simulink
+          MATLAB_Coder
+          Simulink_Coder
+    
+    - name: Build MEX files
+      uses: matlab-actions/run-command@v2
+      with:
+        command: |
+          addpath(genpath(pwd));
+          fprintf('Building Simulink library MEX files...\n');
+          franka_toolbox_simulink_library_mex();
+          fprintf('Building FrankaRobot MEX files...\n');
+          franka_robot_mex();
+          fprintf('MEX build complete!\n');
+    
+    - name: Verify MEX outputs
+      run: |
+        echo "=== MEX Build Outputs ==="
+        ls -la franka_robot/*.zip || echo "No franka_robot/*.zip"
+        ls -la franka_toolbox_simulink_library/*.zip || echo "No simulink library *.zip"
+        # Show contents of zip files
+        unzip -l franka_robot/bin.zip || true
+        unzip -l franka_toolbox_simulink_library/bin.zip || true
+    
+    - name: Upload Linux MEX artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: mex-linux
+        path: |
+          franka_robot/bin.zip
+          franka_toolbox_simulink_library/bin.zip
+        retention-days: 7
+
+  # =============================================================================
+  # Job 2b: Build MEX files on Windows with MATLAB R2022a
+  # Note: Using windows-2022 because franka_toolbox_simulink_library_mex.m 
+  #       hardcodes "Visual Studio 17 2022" generator
+  # =============================================================================
+  build-mex-windows:
+    name: Build MEX (Windows R2022a)
+    runs-on: windows-2022
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Build Cap'n Proto from source (static libraries)
+      run: |
+        # Build Cap'n Proto as STATIC libraries for static linking into MEX files
+        # This ensures users don't need to install Cap'n Proto separately
+        # Output compatible with Windows 10 and Windows 11
+        #
+        # Expected directory structure for franka_robot_mex.m:
+        # C:\Program Files (x86)\capnproto-c++-win32-1.0.2\capnproto-c++-1.0.2\src\capnp\Release
+        # C:\Program Files (x86)\capnproto-c++-win32-1.0.2\capnproto-c++-1.0.2\src\kj\Release
+        
+        $capnpVersion = "1.0.2"
+        $capnpUrl = "https://capnproto.org/capnproto-c++-$capnpVersion.tar.gz"
+        $downloadPath = "$env:TEMP\capnproto.tar.gz"
+        $extractPath = "$env:TEMP\capnproto-extract"
+        $targetDir = "C:\Program Files (x86)\capnproto-c++-win32-$capnpVersion\capnproto-c++-$capnpVersion"
+        
+        Write-Host "Downloading Cap'n Proto $capnpVersion source..."
+        Invoke-WebRequest -Uri $capnpUrl -OutFile $downloadPath
+        
+        Write-Host "Extracting source..."
+        New-Item -ItemType Directory -Path $extractPath -Force | Out-Null
+        tar -xzf $downloadPath -C $extractPath
+        
+        $sourceDir = "$extractPath\capnproto-c++-$capnpVersion"
+        
+        Write-Host "Building Cap'n Proto as STATIC libraries..."
+        $buildDir = "$sourceDir\build"
+        New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
+        
+        cd $buildDir
+        # BUILD_SHARED_LIBS=OFF ensures static libraries for static linking
+        cmake -G "Visual Studio 17 2022" -A x64 `
+              -DBUILD_TESTING=OFF `
+              -DBUILD_SHARED_LIBS=OFF `
+              ..
+        cmake --build . --config Release --parallel
+        
+        Write-Host "Setting up expected directory structure..."
+        New-Item -ItemType Directory -Path "$targetDir\src\capnp\Release" -Force | Out-Null
+        New-Item -ItemType Directory -Path "$targetDir\src\kj\Release" -Force | Out-Null
+        
+        # Copy headers
+        Copy-Item -Path "$sourceDir\src\capnp" -Destination "$targetDir\src\" -Recurse -Force
+        Copy-Item -Path "$sourceDir\src\kj" -Destination "$targetDir\src\" -Recurse -Force
+        
+        # Copy static libraries (.lib)
+        Copy-Item -Path "$buildDir\src\capnp\Release\*.lib" -Destination "$targetDir\src\capnp\Release\" -Force
+        Copy-Item -Path "$buildDir\src\kj\Release\*.lib" -Destination "$targetDir\src\kj\Release\" -Force
+        
+        # Copy tools to bin and add to PATH
+        $binDir = "$targetDir\bin"
+        New-Item -ItemType Directory -Path $binDir -Force | Out-Null
+        Copy-Item -Path "$buildDir\src\capnp\Release\capnp.exe" -Destination $binDir -Force
+        Copy-Item -Path "$buildDir\src\capnp\Release\capnpc-c++.exe" -Destination $binDir -Force
+        echo $binDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        
+        Write-Host "Verifying static libraries..."
+        & "$binDir\capnp.exe" --version
+        Get-ChildItem -Path "$targetDir\src\capnp\Release\*.lib" | ForEach-Object { Write-Host "Static lib: $($_.Name) ($($_.Length) bytes)" }
+        Get-ChildItem -Path "$targetDir\src\kj\Release\*.lib" | ForEach-Object { Write-Host "Static lib: $($_.Name) ($($_.Length) bytes)" }
+      shell: pwsh
+    
+    - name: Set up MATLAB R2022a
+      uses: matlab-actions/setup-matlab@v2
+      with:
+        release: R2022a
+        products: |
+          MATLAB
+          Simulink
+          MATLAB_Coder
+          Simulink_Coder
+    
+    - name: Build MEX files
+      uses: matlab-actions/run-command@v2
+      with:
+        command: |
+          addpath(genpath(pwd));
+          fprintf('Building Simulink library MEX files...\n');
+          franka_toolbox_simulink_library_mex();
+          fprintf('Building FrankaRobot MEX files...\n');
+          franka_robot_mex();
+          fprintf('MEX build complete!\n');
+    
+    - name: Verify MEX outputs
+      run: |
+        Write-Host "=== MEX Build Outputs ==="
+        Get-ChildItem -Path "franka_robot" -Filter "*.zip" -ErrorAction SilentlyContinue
+        Get-ChildItem -Path "franka_toolbox_simulink_library" -Filter "*.zip" -ErrorAction SilentlyContinue
+      shell: pwsh
+    
+    - name: Upload Windows MEX artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: mex-windows
+        path: |
+          franka_robot/bin.zip
+          franka_toolbox_simulink_library/bin.zip
+        retention-days: 7
+
+  # =============================================================================
+  # Job 3: Merge artifacts and create distribution package
+  # =============================================================================
+  package:
+    name: Package Distribution
+    runs-on: ubuntu-22.04
+    needs: [build-server, build-mex-linux, build-mex-windows]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Download server artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: server-binaries
+        path: .
+    
+    - name: Download Linux MEX artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: mex-linux
+        path: mex-linux
+    
+    - name: Download Windows MEX artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: mex-windows
+        path: mex-windows
+    
+    - name: Merge MEX artifacts
+      run: |
+        # Create temp directories for merging
+        mkdir -p merge_franka_robot
+        mkdir -p merge_simulink_lib
+        
+        # Extract Linux MEX files
+        if [ -f "mex-linux/franka_robot/bin.zip" ]; then
+          unzip -o "mex-linux/franka_robot/bin.zip" -d merge_franka_robot/
+        fi
+        if [ -f "mex-linux/franka_toolbox_simulink_library/bin.zip" ]; then
+          unzip -o "mex-linux/franka_toolbox_simulink_library/bin.zip" -d merge_simulink_lib/
+        fi
+        
+        # Extract Windows MEX files (will overwrite same-named files, but extensions differ)
+        if [ -f "mex-windows/franka_robot/bin.zip" ]; then
+          unzip -o "mex-windows/franka_robot/bin.zip" -d merge_franka_robot/
+        fi
+        if [ -f "mex-windows/franka_toolbox_simulink_library/bin.zip" ]; then
+          unzip -o "mex-windows/franka_toolbox_simulink_library/bin.zip" -d merge_simulink_lib/
+        fi
+        
+        # Create merged zip files
+        cd merge_franka_robot && zip -r ../franka_robot/bin.zip . && cd ..
+        cd merge_simulink_lib && zip -r ../franka_toolbox_simulink_library/bin.zip . && cd ..
+        
+        # Verify merged contents
+        echo "=== Merged franka_robot/bin.zip ==="
+        unzip -l franka_robot/bin.zip
+        echo "=== Merged franka_toolbox_simulink_library/bin.zip ==="
+        unzip -l franka_toolbox_simulink_library/bin.zip
+        
+        # Cleanup
+        rm -rf merge_franka_robot merge_simulink_lib mex-linux mex-windows
+    
+    - name: Set up MATLAB R2024a
+      uses: matlab-actions/setup-matlab@v2
+      with:
+        release: R2024a
+        products: |
+          MATLAB
+          Simulink
+          MATLAB_Coder
+          Simulink_Coder
+    
+    - name: Create distribution package
+      uses: matlab-actions/run-command@v2
+      with:
+        command: |
+          addpath(genpath(pwd));
+          fprintf('Creating distribution package (CI mode)...\n');
+          franka_toolbox_dist_make('Mode', 'ci');
+          fprintf('Distribution package created!\n');
+    
+    - name: Verify distribution output
+      run: |
+        echo "=== Distribution Output ==="
+        ls -la dist/
+        if [ -f "dist/franka.mltbx" ]; then
+          echo "✓ franka.mltbx created successfully"
+          du -h dist/franka.mltbx
+        else
+          echo "✗ franka.mltbx not found!"
+          exit 1
+        fi
+    
+    - name: Upload distribution artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: distribution
+        path: dist/franka.mltbx
+        retention-days: 30
+
+  # =============================================================================
+  # Job 4: Create GitHub Release
+  # =============================================================================
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: package
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Download distribution artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: distribution
+        path: dist
+    
+    - name: Verify distribution file
+      id: check-dist
+      run: |
+        if [ -f "dist/franka.mltbx" ]; then
+          echo "exists=true" >> $GITHUB_OUTPUT
+          echo "size=$(du -h dist/franka.mltbx | cut -f1)" >> $GITHUB_OUTPUT
+        else
+          echo "exists=false" >> $GITHUB_OUTPUT
+          echo "Distribution file not found!"
+          exit 1
+        fi
+    
+    - name: Extract changelog entry
+      id: changelog
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        
+        if [ ! -f "CHANGELOG.md" ]; then
+          echo "CHANGELOG.md not found, creating basic release notes"
+          cat > RELEASE_NOTES.md << EOF
+        ## Installation
+        
+        Download the \`franka.mltbx\` file from the assets below and install it in MATLAB:
+        
+        1. Double-click the \`franka.mltbx\` file, or
+        2. In MATLAB, go to **Home** > **Add-Ons** > **Install Add-On** and select the file
+        
+        ## Documentation
+        
+        For detailed documentation, examples, and API reference, visit: [Franka Toolbox for MATLAB Documentation](https://frankarobotics.github.io/docs/franka_toolbox_for_matlab/docs/index.html#)
+        
+        ## File Information
+        
+        - **File**: franka.mltbx
+        - **Size**: ${{ steps.check-dist.outputs.size }}
+        - **Version**: $VERSION
+        EOF
+        else
+          echo "Looking for version $VERSION in CHANGELOG.md"
+          sed -n "/^## $VERSION/,/^## [0-9]/p" CHANGELOG.md | sed '$d' > VERSION_CHANGELOG.md
+          
+          if [ -s VERSION_CHANGELOG.md ] && [ $(wc -l < VERSION_CHANGELOG.md) -gt 1 ]; then
+            echo "Successfully extracted changelog for version $VERSION"
+          else
+            cat > VERSION_CHANGELOG.md << EOF
+        ## What's New
+        
+        Release $VERSION of Franka Toolbox for MATLAB.
+        EOF
+          fi
+          
+          cat > RELEASE_NOTES.md << EOF
+        $(cat VERSION_CHANGELOG.md)
+        
+        ## Installation
+        
+        Download the \`franka.mltbx\` file from the assets below and install it in MATLAB:
+        
+        1. Double-click the \`franka.mltbx\` file, or
+        2. In MATLAB, go to **Home** > **Add-Ons** > **Install Add-On** and select the file
+        
+        ## Documentation
+        
+        For detailed documentation, examples, and API reference, visit: [Franka Toolbox for MATLAB Documentation](https://frankarobotics.github.io/docs/franka_toolbox_for_matlab/docs/index.html#)
+        
+        ## Build Information
+        
+        - **File**: franka.mltbx
+        - **Size**: ${{ steps.check-dist.outputs.size }}
+        - **Version**: $VERSION
+        - **MEX Platforms**: Linux (R2022a), Windows (R2024a)
+        - **Target Architectures**: x86_64, ARM64
+        EOF
+        fi
+        
+        echo "changelog<<EOF" >> $GITHUB_OUTPUT
+        cat RELEASE_NOTES.md >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.version.outputs.version }}
+        name: Franka Toolbox for MATLAB ${{ steps.version.outputs.version }}
+        body: ${{ steps.changelog.outputs.changelog }}
+        draft: false
+        prerelease: ${{ github.event.inputs.prerelease || false }}
+        files: |
+          dist/franka.mltbx
+          CHANGELOG.md
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Summary
+      run: |
+        echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- **Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Distribution File**: franka.mltbx (${{ steps.check-dist.outputs.size }})" >> $GITHUB_STEP_SUMMARY
+        echo "- **Release URL**: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Pre-release**: ${{ github.event.inputs.prerelease || false }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Build Jobs" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Server Binaries (Docker - amd64 + arm64)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ MEX Linux (Ubuntu 22.04, R2022a)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ MEX Windows (R2022a)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Package & Release" >> $GITHUB_STEP_SUMMARY
+
