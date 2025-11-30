@@ -31,7 +31,7 @@ mkdir -p "$TEMP_PKG_DIR"
 log_info "Creating common library archive..."
 COMMON_ARCHIVE="bin${BIN_SUFFIX}.zip"
 cd "${WORKSPACE}/common"
-zip -r "${TEMP_PKG_DIR}/${COMMON_ARCHIVE}" "${BIN_FOLDER}"
+zip -r -y "${TEMP_PKG_DIR}/${COMMON_ARCHIVE}" "${BIN_FOLDER}"
 log_info "Created: ${COMMON_ARCHIVE}"
 
 # Copy to output directory
@@ -66,7 +66,7 @@ if [[ -d "$LIBFRANKA_PATH/build/usr" ]] || [[ -f "$LIBFRANKA_PATH/build/libfrank
     
     LIBFRANKA_ARCHIVE="${FRANKA_FOLDER}.zip"
     cd "${TEMP_PKG_DIR}"
-    zip -r "${LIBFRANKA_ARCHIVE}" "${FRANKA_FOLDER}"
+    zip -r -y "${LIBFRANKA_ARCHIVE}" "${FRANKA_FOLDER}"
     
     # Copy to output directory
     cp "${LIBFRANKA_ARCHIVE}" "${OUTPUT_DIR}/"

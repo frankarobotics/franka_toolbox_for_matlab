@@ -33,7 +33,10 @@ bundle_arm64_deps_smart() {
     # Excludelist: base system libs that should NOT be bundled
     local exclude_pattern="^(libc\.so|libm\.so|libdl\.so|libpthread\.so|librt\.so|libgcc_s\.so|libstdc\+\+\.so|ld-linux.*\.so|libresolv\.so|libnss_.*\.so|libutil\.so)"
     
-    # Already processed libraries (to avoid duplicates and infinite loops)
+    # Track copied files by their real path (to avoid duplicates)
+    declare -A copied_files
+    
+    # Already processed libraries (to avoid infinite loops)
     declare -A processed
     
     # Queue of libraries to process
@@ -65,13 +68,21 @@ bundle_arm64_deps_smart() {
                 fi
             done
             
-            # If found, copy it and add to queue for recursive processing
+            # If found, copy it intelligently (as the NEEDED name, no symlinks)
             if [[ -n "$lib_path" ]]; then
-                # Copy library and its symlinks
-                cp -P "$lib_path"* "$dest_lib/" 2>/dev/null || true
+                # Resolve to the real file content
+                local real_file=$(readlink -f "$lib_path")
                 
-                # Add to queue if not already processed
-                [[ -z "${processed[$lib_path]}" ]] && queue+=("$lib_path")
+                # Check if we already have this library file (by content/path) provided as this name
+                # But wait, we want to ensure 'lib' (NEEDED name) exists in dest.
+                
+                if [[ ! -f "$dest_lib/$lib" ]]; then
+                    # Copy the real file content to the destination AS the NEEDED name
+                    cp "$real_file" "$dest_lib/$lib" 2>/dev/null || true
+                fi
+                
+                # Add real file to queue for recursive dependency analysis
+                [[ -z "${processed[$real_file]}" ]] && queue+=("$real_file")
             fi
         done
     done
@@ -93,11 +104,36 @@ bundle_libfranka_deps() {
         local dest_lib="${libfranka_build}/usr/lib"
         mkdir -p "${dest_lib}"
         
-        # Copy libfranka itself
-        cp -P "${libfranka_build}/${libfranka_so}"* "${dest_lib}/" 2>/dev/null || true
+        # Copy libfranka itself (copy real content to the SONAME, no symlinks)
+        local libfranka_path="${libfranka_build}/${libfranka_so}"
+        if [[ -f "$libfranka_path" ]]; then
+            local real_libfranka=$(readlink -f "$libfranka_path")
+            # Copy content to destination with the versioned name (e.g. libfranka.so.0.16)
+            cp "$real_libfranka" "${dest_lib}/${libfranka_so}" 2>/dev/null || true
+        fi
         
-        # Smart dependency bundling
-        bundle_arm64_deps_smart "${libfranka_build}/${libfranka_so}" "${dest_lib}"
+        # Smart dependency bundling (analyze the real file)
+        local real_libfranka=$(readlink -f "$libfranka_path")
+        bundle_arm64_deps_smart "$real_libfranka" "${dest_lib}"
+        
+        # Post-processing:
+        # 1. Create usr/bin and copy libfranka.so there
+        local dest_bin="${libfranka_build}/usr/bin"
+        mkdir -p "${dest_bin}"
+        cp "$real_libfranka" "${dest_bin}/libfranka.so" 2>/dev/null || true
+        
+        # 2. Set RPATHs using patchelf
+        # For libfranka.so in bin: needs to look in ../lib
+        if [[ -f "${dest_bin}/libfranka.so" ]]; then
+            patchelf --set-rpath '$ORIGIN/../lib' "${dest_bin}/libfranka.so" 2>/dev/null || true
+        fi
+        
+        # For libraries in lib: need to look in . (to find each other)
+        for lib in "${dest_lib}"/*.so*; do
+             patchelf --set-rpath '$ORIGIN' "$lib" 2>/dev/null || true
+        done
+        
+        log_success "Dependencies bundled and RPATHs set."
         
         log_success "Dependencies bundled intelligently ($(ls -1 ${dest_lib} | wc -l) libraries)."
     else
