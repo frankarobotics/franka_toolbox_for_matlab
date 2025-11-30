@@ -34,15 +34,23 @@ bundle_libfranka_deps() {
     local libfranka_so="libfranka.so.${libfranka_major_minor}"
     
     if [[ "$ARCH" == "arm64" ]]; then
-        # For ARM64, we use the aarch64 linuxdeploy
-        # Note: linuxdeploy needs to run on the target or via qemu
-        # For cross-compilation, we'll skip this step and rely on target system
-        log_warn "Skipping linuxdeploy for ARM64 cross-compilation"
-        log_warn "Runtime dependencies should be resolved on the target system"
+        # For ARM64, we manually bundle ONLY our custom dependencies (Pinocchio, hpp-fcl, CapnProto)
+        # We DO NOT bundle system libraries (Boost, Poco, etc.) to avoid conflicts with target system.
+        # The user is expected to apt install those on the Jetson.
+        log_info "Manually bundling custom ARM64 dependencies..."
         
-        # Create minimal usr structure
-        mkdir -p "${libfranka_build}/usr/lib"
-        cp "${libfranka_build}/${libfranka_so}" "${libfranka_build}/usr/lib/" 2>/dev/null || true
+        local dest_lib="${libfranka_build}/usr/lib"
+        mkdir -p "${dest_lib}"
+        
+        # Copy libfranka itself
+        cp "${libfranka_build}/${libfranka_so}" "${dest_lib}/" 2>/dev/null || true
+        
+        # Copy ONLY custom built libraries from our sysroot
+        # These are safe to bundle because they are not in standard Ubuntu repos (or we use custom versions)
+        log_info "Copying custom built libraries (Pinocchio, hpp-fcl, CapnProto)..."
+        cp -P /opt/sysroot-aarch64/usr/lib/*.so* "${dest_lib}/" 2>/dev/null || true
+        
+        log_success "Custom dependencies bundled manually."
     else
         log_info "Running linuxdeploy to bundle dependencies..."
         
