@@ -476,7 +476,7 @@ jobs:
         - **File**: franka.mltbx
         - **Size**: ${{ steps.check-dist.outputs.size }}
         - **Version**: $VERSION
-        - **MEX Platforms**: Linux (R2022a), Windows (R2024a)
+        - **MEX Platforms**: Linux (R2022a), Windows (R2022a)
         - **Target Architectures**: x86_64, ARM64
         EOF
         fi
