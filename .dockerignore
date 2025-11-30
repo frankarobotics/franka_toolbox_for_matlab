@@ -1,0 +1,53 @@
+# Docker ignore file for Franka Toolbox build
+
+# Git
+.git
+.gitignore
+
+# Build artifacts (will be recreated)
+**/build/
+**/bin/
+**/bin_arm/
+
+# Existing archives (optional - comment out to use cached builds)
+# common/bin.zip
+# common/bin_arm.zip
+# franka_robot_server/bin.tar.gz
+# franka_robot_server/bin_arm.tar.gz
+# dependencies/libfranka.zip
+# dependencies/libfranka_arm.zip
+
+# Temporary files
+**/tmp/
+*.tmp
+*.log
+
+# MATLAB generated files
+*.mexa64
+*.mexw64
+*.mex
+*.asv
+*.slxc
+slprj/
+
+# Distribution
+dist/
+
+# Documentation build artifacts
+docs/_build/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# libfranka source (will be cloned fresh in container)
+libfranka/
+libfranka_arm/
+
