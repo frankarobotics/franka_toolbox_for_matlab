@@ -49,31 +49,29 @@ cp "${TEMP_PKG_DIR}/${SERVER_ARCHIVE}" "${OUTPUT_DIR}/"
 
 # Also package libfranka dependencies if they exist
 LIBFRANKA_PATH="${WORKSPACE}/${FRANKA_FOLDER}"
-if [[ -d "$LIBFRANKA_PATH/build/usr" ]]; then
+if [[ -d "$LIBFRANKA_PATH/build/usr" ]] || [[ -f "$LIBFRANKA_PATH/build/libfranka.so" ]]; then
     log_info "Creating libfranka dependencies archive..."
-    cd "${WORKSPACE}/dependencies"
-    mkdir -p "${FRANKA_FOLDER}"
+    
+    # Use temp directory to avoid permission issues
+    LIBFRANKA_TEMP="${TEMP_PKG_DIR}/${FRANKA_FOLDER}"
+    mkdir -p "${LIBFRANKA_TEMP}/build"
     
     # Copy necessary libfranka components
-    mkdir -p "${FRANKA_FOLDER}/build"
-    cp -r "${LIBFRANKA_PATH}/build/usr" "${FRANKA_FOLDER}/build/" 2>/dev/null || true
-    cp -r "${LIBFRANKA_PATH}/include" "${FRANKA_FOLDER}/" 2>/dev/null || true
-    cp -r "${LIBFRANKA_PATH}/common" "${FRANKA_FOLDER}/" 2>/dev/null || true
+    cp -r "${LIBFRANKA_PATH}/build/usr" "${LIBFRANKA_TEMP}/build/" 2>/dev/null || true
+    cp -r "${LIBFRANKA_PATH}/include" "${LIBFRANKA_TEMP}/" 2>/dev/null || true
+    cp -r "${LIBFRANKA_PATH}/common" "${LIBFRANKA_TEMP}/" 2>/dev/null || true
     
     # Copy libfranka.so files
-    cp "${LIBFRANKA_PATH}/build/libfranka.so"* "${FRANKA_FOLDER}/build/" 2>/dev/null || true
+    cp "${LIBFRANKA_PATH}/build/libfranka.so"* "${LIBFRANKA_TEMP}/build/" 2>/dev/null || true
     
     LIBFRANKA_ARCHIVE="${FRANKA_FOLDER}.zip"
-    rm -f "$LIBFRANKA_ARCHIVE"
-    zip -r "$LIBFRANKA_ARCHIVE" "${FRANKA_FOLDER}"
+    cd "${TEMP_PKG_DIR}"
+    zip -r "${LIBFRANKA_ARCHIVE}" "${FRANKA_FOLDER}"
     
     # Copy to output directory
-    cp "$LIBFRANKA_ARCHIVE" "${OUTPUT_DIR}/"
+    cp "${LIBFRANKA_ARCHIVE}" "${OUTPUT_DIR}/"
     
-    # Cleanup
-    rm -rf "${FRANKA_FOLDER}"
-    
-    log_info "Created: ${WORKSPACE}/dependencies/${LIBFRANKA_ARCHIVE}"
+    log_info "Created: ${LIBFRANKA_ARCHIVE}"
 fi
 
 # Clean up build directories

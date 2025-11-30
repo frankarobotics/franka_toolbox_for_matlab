@@ -1,12 +1,22 @@
 # Dockerfile for cross-compiling Franka Toolbox target binaries (aarch64/arm64)
-# Ubuntu 22.04 base with cross-compilation toolchain for Jetson Orin
+# Ubuntu 22.04 base with multiarch support for Jetson Orin
 
 FROM ubuntu:22.04 AS builder
 
 # Avoid interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install build dependencies and cross-compilation toolchain
+# 1. Setup Multiarch (AMD64 host, ARM64 target)
+# - Enable arm64 architecture
+# - Update sources.list to separate amd64 (archive) and arm64 (ports)
+RUN dpkg --add-architecture arm64 && \
+    cp /etc/apt/sources.list /etc/apt/sources.list.bak && \
+    sed -i 's/^deb /deb [arch=amd64] /g' /etc/apt/sources.list && \
+    echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy main universe multiverse restricted" >> /etc/apt/sources.list && \
+    echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-updates main universe multiverse restricted" >> /etc/apt/sources.list && \
+    echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-security main universe multiverse restricted" >> /etc/apt/sources.list
+
+# 2. Install build tools and dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
@@ -14,189 +24,56 @@ RUN apt-get update && apt-get install -y \
     wget \
     curl \
     pkg-config \
-    libtool \
-    autoconf \
-    fuse \
-    file \
     patchelf \
     zip \
     # Cross-compilation toolchain
-    gcc-aarch64-linux-gnu \
-    g++-aarch64-linux-gnu \
-    binutils-aarch64-linux-gnu \
-    # Native tools for host builds
-    libeigen3-dev \
-    libboost-all-dev \
+    crossbuild-essential-arm64 \
+    # Target Libraries (ARM64) - Installing these prevents manual compilation!
+    libeigen3-dev:arm64 \
+    # libboost-all-dev pulls in MPI which breaks multiarch on 22.04 due to gfortran conflict
+    libboost-system-dev:arm64 \
+    libboost-filesystem-dev:arm64 \
+    libboost-thread-dev:arm64 \
+    libboost-program-options-dev:arm64 \
+    libboost-serialization-dev:arm64 \
+    libboost-chrono-dev:arm64 \
+    libboost-date-time-dev:arm64 \
+    libboost-atomic-dev:arm64 \
+    libpoco-dev:arm64 \
+    libccd-dev:arm64 \
+    libfcl-dev:arm64 \
+    liboctomap-dev:arm64 \
+    liburdfdom-dev:arm64 \
+    liburdfdom-headers-dev:arm64 \
+    libconsole-bridge-dev:arm64 \
+    libtinyxml2-dev:arm64 \
+    libnlopt-dev:arm64 \
+    libassimp-dev:arm64 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Create sysroot directory for cross-compiled libraries
-RUN mkdir -p /opt/sysroot-aarch64/usr/include /opt/sysroot-aarch64/usr/lib
-
-# Download and prepare Eigen headers (header-only, architecture independent)
-ARG EIGEN_VERSION=3.4.0
-RUN wget -q https://gitlab.com/libeigen/eigen/-/archive/${EIGEN_VERSION}/eigen-${EIGEN_VERSION}.tar.gz && \
-    tar xzf eigen-${EIGEN_VERSION}.tar.gz && \
-    cp -r eigen-${EIGEN_VERSION}/Eigen /opt/sysroot-aarch64/usr/include/ && \
-    cp -r eigen-${EIGEN_VERSION}/unsupported /opt/sysroot-aarch64/usr/include/ && \
-    rm -rf eigen-${EIGEN_VERSION}*
-
-# Cross-compile Boost for ARM64
-RUN apt-get update && apt-get install -y libboost-all-dev && \
-    wget -q https://boostorg.jfrog.io/artifactory/main/release/1.74.0/source/boost_1_74_0.tar.gz && \
-    tar xzf boost_1_74_0.tar.gz && \
-    cd boost_1_74_0 && \
-    ./bootstrap.sh --prefix=/opt/sysroot-aarch64/usr && \
-    echo "using gcc : arm : aarch64-linux-gnu-g++ ;" > user-config.jam && \
-    ./b2 --user-config=user-config.jam toolset=gcc-arm target-os=linux \
-        architecture=arm address-model=64 \
-        --with-system --with-thread --with-filesystem --with-program_options \
-        link=static runtime-link=static install -j$(nproc) || true && \
-    cd .. && rm -rf boost_1_74_0* && \
-    apt-get clean
-
-# Cross-compile libccd for ARM64
-RUN git clone https://github.com/danfis/libccd.git /opt/libccd && \
-    cd /opt/libccd && \
+# 3. Cross-compile hpp-fcl for ARM64 (Required by Pinocchio)
+RUN git clone https://github.com/humanoid-path-planner/hpp-fcl.git /opt/hpp-fcl && \
+    cd /opt/hpp-fcl && \
+    git checkout v2.4.1 && \
+    git submodule update --init && \
     mkdir build && cd build && \
     cmake .. \
         -DCMAKE_SYSTEM_NAME=Linux \
         -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
         -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
         -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
-        -DCMAKE_INSTALL_PREFIX=/opt/sysroot-aarch64/usr \
-        -DCMAKE_BUILD_TYPE=Release && \
-    make -j$(nproc) && make install && \
-    cd / && rm -rf /opt/libccd
-
-# Cross-compile octomap for ARM64
-RUN git clone https://github.com/OctoMap/octomap.git /opt/octomap && \
-    cd /opt/octomap && \
-    mkdir build && cd build && \
-    cmake .. \
-        -DCMAKE_SYSTEM_NAME=Linux \
-        -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
-        -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
-        -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
+        -DCMAKE_FIND_ROOT_PATH="/usr/aarch64-linux-gnu" \
         -DCMAKE_INSTALL_PREFIX=/opt/sysroot-aarch64/usr \
         -DCMAKE_BUILD_TYPE=Release \
+        -DBUILD_PYTHON_INTERFACE=OFF \
         -DBUILD_TESTING=OFF && \
     make -j$(nproc) && make install && \
-    cd / && rm -rf /opt/octomap
+    cd / && rm -rf /opt/hpp-fcl
 
-# Cross-compile FCL for ARM64
-RUN git clone https://github.com/flexible-collision-library/fcl.git /opt/fcl && \
-    cd /opt/fcl && git checkout 0.7.0 && \
-    mkdir build && cd build && \
-    cmake .. \
-        -DCMAKE_SYSTEM_NAME=Linux \
-        -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
-        -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
-        -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
-        -DCMAKE_FIND_ROOT_PATH=/opt/sysroot-aarch64 \
-        -DCMAKE_INSTALL_PREFIX=/opt/sysroot-aarch64/usr \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DBUILD_TESTING=OFF \
-        -DFCL_WITH_OCTOMAP=ON && \
-    make -j$(nproc) && make install && \
-    cd / && rm -rf /opt/fcl
-
-# Cross-compile nlopt for ARM64
-RUN git clone https://github.com/stevengj/nlopt.git /opt/nlopt && \
-    cd /opt/nlopt && \
-    mkdir build && cd build && \
-    cmake .. \
-        -DCMAKE_SYSTEM_NAME=Linux \
-        -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
-        -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
-        -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
-        -DCMAKE_INSTALL_PREFIX=/opt/sysroot-aarch64/usr \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DNLOPT_PYTHON=OFF \
-        -DNLOPT_OCTAVE=OFF \
-        -DNLOPT_MATLAB=OFF \
-        -DNLOPT_GUILE=OFF \
-        -DNLOPT_SWIG=OFF && \
-    make -j$(nproc) && make install && \
-    cd / && rm -rf /opt/nlopt
-
-# Cross-compile urdfdom_headers for ARM64
-RUN git clone https://github.com/ros/urdfdom_headers.git /opt/urdfdom_headers && \
-    cd /opt/urdfdom_headers && \
-    mkdir build && cd build && \
-    cmake .. \
-        -DCMAKE_SYSTEM_NAME=Linux \
-        -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
-        -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
-        -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
-        -DCMAKE_INSTALL_PREFIX=/opt/sysroot-aarch64/usr \
-        -DCMAKE_BUILD_TYPE=Release && \
-    make -j$(nproc) && make install && \
-    cd / && rm -rf /opt/urdfdom_headers
-
-# Cross-compile TinyXML for ARM64 (required by urdfdom)
-RUN apt-get update && apt-get install -y libtinyxml-dev && \
-    git clone https://github.com/leethomason/tinyxml2.git /opt/tinyxml2 && \
-    cd /opt/tinyxml2 && \
-    mkdir build && cd build && \
-    cmake .. \
-        -DCMAKE_SYSTEM_NAME=Linux \
-        -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
-        -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
-        -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
-        -DCMAKE_INSTALL_PREFIX=/opt/sysroot-aarch64/usr \
-        -DCMAKE_BUILD_TYPE=Release && \
-    make -j$(nproc) && make install && \
-    cd / && rm -rf /opt/tinyxml2
-
-# Cross-compile console_bridge for ARM64 (required by urdfdom)
-RUN git clone https://github.com/ros/console_bridge.git /opt/console_bridge && \
-    cd /opt/console_bridge && \
-    mkdir build && cd build && \
-    cmake .. \
-        -DCMAKE_SYSTEM_NAME=Linux \
-        -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
-        -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
-        -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
-        -DCMAKE_INSTALL_PREFIX=/opt/sysroot-aarch64/usr \
-        -DCMAKE_BUILD_TYPE=Release && \
-    make -j$(nproc) && make install && \
-    cd / && rm -rf /opt/console_bridge
-
-# Cross-compile urdfdom for ARM64
-RUN git clone https://github.com/ros/urdfdom.git /opt/urdfdom && \
-    cd /opt/urdfdom && \
-    mkdir build && cd build && \
-    cmake .. \
-        -DCMAKE_SYSTEM_NAME=Linux \
-        -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
-        -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
-        -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
-        -DCMAKE_FIND_ROOT_PATH=/opt/sysroot-aarch64 \
-        -DCMAKE_PREFIX_PATH=/opt/sysroot-aarch64/usr \
-        -DCMAKE_INSTALL_PREFIX=/opt/sysroot-aarch64/usr \
-        -DCMAKE_BUILD_TYPE=Release && \
-    make -j$(nproc) && make install && \
-    cd / && rm -rf /opt/urdfdom
-
-# Cross-compile Poco for ARM64
-RUN git clone -b poco-1.12.4-release https://github.com/pocoproject/poco.git /opt/poco && \
-    cd /opt/poco && \
-    mkdir build && cd build && \
-    cmake .. \
-        -DCMAKE_SYSTEM_NAME=Linux \
-        -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
-        -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
-        -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
-        -DCMAKE_INSTALL_PREFIX=/opt/sysroot-aarch64/usr \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DENABLE_TESTS=OFF \
-        -DENABLE_SAMPLES=OFF && \
-    make -j$(nproc) && make install && \
-    cd / && rm -rf /opt/poco
-
-# Cross-compile Pinocchio for ARM64
-# Only clone the cmake submodule, skip robot-data which is huge and unnecessary
+# 4. Cross-compile Pinocchio for ARM64
+# Pinocchio is not in standard Ubuntu repos, so we build it.
+# It will link against the apt-installed libs (Eigen, Boost, URDFDOM, etc.)
 RUN git clone https://github.com/stack-of-tasks/pinocchio /opt/pinocchio && \
     cd /opt/pinocchio && \
     git checkout v2.7.1 && \
@@ -207,42 +84,37 @@ RUN git clone https://github.com/stack-of-tasks/pinocchio /opt/pinocchio && \
         -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
         -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
         -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
-        -DCMAKE_FIND_ROOT_PATH=/opt/sysroot-aarch64 \
-        -DCMAKE_PREFIX_PATH=/opt/sysroot-aarch64/usr \
+        -DCMAKE_FIND_ROOT_PATH="/usr/aarch64-linux-gnu;/opt/sysroot-aarch64" \
         -DCMAKE_INSTALL_PREFIX=/opt/sysroot-aarch64/usr \
         -DCMAKE_BUILD_TYPE=Release \
         -DBUILD_PYTHON_INTERFACE=OFF \
         -DBUILD_TESTING=OFF \
-        -DBUILD_WITH_COLLISION_SUPPORT=OFF \
+        -DBUILD_WITH_COLLISION_SUPPORT=ON \
         -DBUILD_WITH_AUTODIFF_SUPPORT=OFF \
         -DBUILD_WITH_CASADI_SUPPORT=OFF \
         -DBUILD_WITH_CODEGEN_SUPPORT=OFF && \
     make -j$(nproc) && make install && \
     cd / && rm -rf /opt/pinocchio
 
-# Build and install Cap'n Proto for HOST (needed for capnp compiler)
+# 4. Build Cap'n Proto (HOST and TARGET)
+# We stick to manual build to ensure version consistency (1.1.0) 
+# as Ubuntu 22.04 only has 0.9.1 which might be too old.
 ARG CAPNP_VERSION=1.1.0
 RUN curl -O https://capnproto.org/capnproto-c++-${CAPNP_VERSION}.tar.gz && \
     tar zxf capnproto-c++-${CAPNP_VERSION}.tar.gz && \
+    # Host build (for capnp tool)
     cd capnproto-c++-${CAPNP_VERSION} && \
-    mkdir build-host && \
-    cd build-host && \
+    mkdir build-host && cd build-host && \
     CC=gcc CXX=g++ cmake -DBUILD_TESTING=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON .. && \
-    make -j$(nproc) && \
-    make install && \
-    ldconfig && \
-    cd ../..
-
-# Build Cap'n Proto for ARM64 target
-RUN cd capnproto-c++-${CAPNP_VERSION} && \
-    mkdir build-arm64 && \
-    cd build-arm64 && \
+    make -j$(nproc) && make install && \
+    # Target build (for ARM64 libraries)
+    cd .. && mkdir build-arm64 && cd build-arm64 && \
     cmake \
         -DCMAKE_SYSTEM_NAME=Linux \
         -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
         -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
         -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
-        -DCMAKE_FIND_ROOT_PATH=/opt/sysroot-aarch64 \
+        -DCMAKE_FIND_ROOT_PATH="/usr/aarch64-linux-gnu" \
         -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
         -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
         -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
@@ -250,30 +122,26 @@ RUN cd capnproto-c++-${CAPNP_VERSION} && \
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
         -DCMAKE_INSTALL_PREFIX=/opt/sysroot-aarch64/usr \
         .. && \
-    make -j$(nproc) && \
-    make install && \
-    cd ../.. && \
-    rm -rf capnproto-c++-${CAPNP_VERSION}.tar.gz
+    make -j$(nproc) && make install && \
+    cd ../.. && rm -rf capnproto-c++-${CAPNP_VERSION}*
 
 # Set environment variables
-ENV PATH=/usr/local/bin:$PATH
-ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:/opt/sysroot-aarch64/usr/lib/pkgconfig:$PKG_CONFIG_PATH
-ENV LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
-ENV CMAKE_PREFIX_PATH=/usr/local:/opt/sysroot-aarch64/usr:$CMAKE_PREFIX_PATH
+ENV PATH="/usr/local/bin:${PATH}"
+ENV PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/opt/sysroot-aarch64/usr/lib/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig"
+ENV LD_LIBRARY_PATH="/usr/local/lib"
+# Note: We include both our custom sysroot and the standard multiarch paths
+ENV CMAKE_PREFIX_PATH="/usr/local:/opt/sysroot-aarch64/usr:/usr/aarch64-linux-gnu/usr"
 
-# Download linuxdeploy for arm64 (for bundling on target)
+# Download linuxdeploy for arm64
 RUN mkdir -p /opt/tools && \
     wget -q -O /opt/tools/linuxdeploy-aarch64.AppImage \
     https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20250213-2/linuxdeploy-aarch64.AppImage && \
     chmod +x /opt/tools/linuxdeploy-aarch64.AppImage
 
-# Set working directory
 WORKDIR /workspace
 
-# Copy build scripts
 COPY docker/scripts/ /scripts/
 RUN chmod +x /scripts/*.sh
 
-# Default command
 ENTRYPOINT ["/scripts/entrypoint.sh"]
 CMD ["all", "--arch", "arm64"]

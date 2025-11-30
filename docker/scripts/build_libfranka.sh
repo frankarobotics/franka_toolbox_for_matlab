@@ -41,7 +41,7 @@ if [[ "$ARCH" == "arm64" ]]; then
         -DCMAKE_BUILD_TYPE=Release \
         -DBUILD_TESTS=OFF \
         -DBUILD_EXAMPLES=OFF \
-        -DCMAKE_PREFIX_PATH="/opt/sysroot-aarch64/usr" \
+        -DCMAKE_PREFIX_PATH="/opt/sysroot-aarch64/usr;/usr/lib/aarch64-linux-gnu;/usr/aarch64-linux-gnu/usr" \
         -Dpinocchio_DIR="/opt/sysroot-aarch64/usr/lib/cmake/pinocchio" \
         ..
 else
