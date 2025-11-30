@@ -22,11 +22,14 @@ set(CMAKE_FIND_ROOT_PATH
     /usr/aarch64-linux-gnu
 )
 
-# Relax these modes to allow finding things in the multiarch paths
+# Search modes for cross-compilation
+# NEVER for programs (use host tools like capnp compiler)
+# ONLY for libraries, includes, and packages (use target sysroot only)
+# This prevents mixing host and target CMake configs which causes recursion
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
-set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY BOTH)
-set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
-set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 
 # Additional include/library paths
 set(CMAKE_PREFIX_PATH 
@@ -38,6 +41,11 @@ set(CMAKE_PREFIX_PATH
 set(CapnProto_DIR /opt/sysroot-aarch64/usr/lib/cmake/CapnProto)
 set(pinocchio_DIR /opt/sysroot-aarch64/usr/lib/cmake/pinocchio)
 set(hpp-fcl_DIR /opt/sysroot-aarch64/usr/lib/cmake/hpp-fcl)
+
+# Eigen3 from apt multiarch install (libeigen3-dev:arm64)
+# This prevents CMake from finding the host's Eigen3 and causing recursion
+set(Eigen3_DIR /usr/lib/aarch64-linux-gnu/cmake/eigen3)
+set(EIGEN3_INCLUDE_DIR /usr/include/eigen3)
 
 # Position independent code
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)

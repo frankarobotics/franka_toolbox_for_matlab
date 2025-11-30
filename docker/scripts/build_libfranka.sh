@@ -68,6 +68,8 @@ if [[ "$ARCH" == "arm64" ]]; then
         -DBUILD_EXAMPLES=OFF \
         -DCMAKE_PREFIX_PATH="/opt/sysroot-aarch64/usr;/usr/lib/aarch64-linux-gnu;/usr/aarch64-linux-gnu/usr" \
         -Dpinocchio_DIR="/opt/sysroot-aarch64/usr/lib/cmake/pinocchio" \
+        -DEigen3_DIR="/usr/lib/aarch64-linux-gnu/cmake/eigen3" \
+        -DEIGEN3_INCLUDE_DIR="/usr/include/eigen3" \
         ..
 else
     log_info "Configuring libfranka for native AMD64 build..."
