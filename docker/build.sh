@@ -175,6 +175,7 @@ build_for_arch() {
     log_info "Running build container..."
     docker run --rm \
         -v "${PROJECT_ROOT}:/workspace:rw" \
+        -v "${PROJECT_ROOT}/docker/scripts:/scripts:ro" \
         -v "${container_output}:/output:rw" \
         --privileged \
         "${image_name}" \

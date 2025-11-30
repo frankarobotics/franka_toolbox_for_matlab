@@ -51,6 +51,40 @@ set(EIGEN3_INCLUDE_DIR "/usr/include/eigen3" CACHE PATH "Eigen3 include dir" FOR
 set(EIGEN3_INCLUDE_DIRS "/usr/include/eigen3" CACHE PATH "Eigen3 include dirs" FORCE)
 set(Eigen3_FOUND TRUE CACHE BOOL "Eigen3 found" FORCE)
 
+# Poco from apt multiarch install (libpoco-dev:arm64)
+set(Poco_INCLUDE_DIR "/usr/include" CACHE PATH "Poco include dir" FORCE)
+set(Poco_Net_LIBRARY "/usr/lib/aarch64-linux-gnu/libPocoNet.so" CACHE FILEPATH "Poco Net library" FORCE)
+set(Poco_Foundation_LIBRARY "/usr/lib/aarch64-linux-gnu/libPocoFoundation.so" CACHE FILEPATH "Poco Foundation library" FORCE)
+set(Poco_LIBRARIES "/usr/lib/aarch64-linux-gnu/libPocoNet.so;/usr/lib/aarch64-linux-gnu/libPocoFoundation.so" CACHE STRING "Poco libraries" FORCE)
+set(Poco_FOUND TRUE CACHE BOOL "Poco found" FORCE)
+
+# Boost from apt multiarch install (libboost-*-dev:arm64)
+set(BOOST_ROOT "/usr" CACHE PATH "Boost root" FORCE)
+set(BOOST_INCLUDEDIR "/usr/include" CACHE PATH "Boost include dir" FORCE)
+set(BOOST_LIBRARYDIR "/usr/lib/aarch64-linux-gnu" CACHE PATH "Boost library dir" FORCE)
+set(Boost_NO_SYSTEM_PATHS OFF CACHE BOOL "Boost no system paths" FORCE)
+set(Boost_INCLUDE_DIR "/usr/include" CACHE PATH "Boost include dir" FORCE)
+set(Boost_FILESYSTEM_LIBRARY "/usr/lib/aarch64-linux-gnu/libboost_filesystem.so" CACHE FILEPATH "Boost filesystem" FORCE)
+set(Boost_SERIALIZATION_LIBRARY "/usr/lib/aarch64-linux-gnu/libboost_serialization.so" CACHE FILEPATH "Boost serialization" FORCE)
+set(Boost_SYSTEM_LIBRARY "/usr/lib/aarch64-linux-gnu/libboost_system.so" CACHE FILEPATH "Boost system" FORCE)
+
+# urdfdom from apt multiarch install (liburdfdom-dev:arm64, liburdfdom-headers-dev:arm64)
+set(urdfdom_headers_DIR "/usr/lib/aarch64-linux-gnu/cmake/urdfdom_headers" CACHE PATH "urdfdom_headers config" FORCE)
+set(urdfdom_DIR "/usr/lib/aarch64-linux-gnu/cmake/urdfdom" CACHE PATH "urdfdom config" FORCE)
+
+# console_bridge from apt multiarch install
+set(console_bridge_DIR "/usr/lib/aarch64-linux-gnu/cmake/console_bridge" CACHE PATH "console_bridge config" FORCE)
+
+# ZLIB from apt multiarch install (zlib1g-dev:arm64)
+set(ZLIB_LIBRARY "/usr/lib/aarch64-linux-gnu/libz.so" CACHE FILEPATH "ZLIB library" FORCE)
+set(ZLIB_INCLUDE_DIR "/usr/include" CACHE PATH "ZLIB include" FORCE)
+set(ZLIB_FOUND TRUE CACHE BOOL "ZLIB found" FORCE)
+
+# PCRE from apt multiarch install (libpcre3-dev:arm64)
+set(PCRE_LIBRARY "/usr/lib/aarch64-linux-gnu/libpcre.so" CACHE FILEPATH "PCRE library" FORCE)
+set(PCRE_INCLUDE_DIR "/usr/include" CACHE PATH "PCRE include" FORCE)
+set(PCRE_FOUND TRUE CACHE BOOL "PCRE found" FORCE)
+
 # Position independent code
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
