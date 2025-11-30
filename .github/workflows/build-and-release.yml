@@ -114,7 +114,7 @@ jobs:
         mv common/bin_arm.zip common/bin_arm_gen1.zip || true
         mv franka_robot_server/bin.tar.gz franka_robot_server/bin_gen1.tar.gz || true
         mv franka_robot_server/bin_arm.tar.gz franka_robot_server/bin_arm_gen1.tar.gz || true
-        mv dependencies/libfranka.zip dependencies/libfranka_gen1.zip || true
+        mv dependencies/libfranka.zip dependencies/franka_gen1.zip || true
         mv dependencies/libfranka_arm.zip dependencies/libfranka_arm_gen1.zip || true
     
     - name: Verify build outputs
@@ -133,7 +133,7 @@ jobs:
           common/bin_arm_gen1.zip
           franka_robot_server/bin_gen1.tar.gz
           franka_robot_server/bin_arm_gen1.tar.gz
-          dependencies/libfranka_gen1.zip
+          dependencies/franka_gen1.zip
           dependencies/libfranka_arm_gen1.zip
         retention-days: 7
 
@@ -444,7 +444,7 @@ jobs:
         cp gen1-binaries/common/bin_arm_gen1.zip common/bin_arm.zip
         cp gen1-binaries/franka_robot_server/bin_gen1.tar.gz franka_robot_server/bin.tar.gz
         cp gen1-binaries/franka_robot_server/bin_arm_gen1.tar.gz franka_robot_server/bin_arm.tar.gz
-        cp gen1-binaries/dependencies/libfranka_gen1.zip dependencies/libfranka.zip
+        cp gen1-binaries/dependencies/franka_gen1.zip dependencies/libfranka.zip
         cp gen1-binaries/dependencies/libfranka_arm_gen1.zip dependencies/libfranka_arm.zip
         
         echo "Gen1 binaries swapped in successfully"
@@ -455,13 +455,13 @@ jobs:
         mkdir -p dist
         mv /tmp/franka.mltbx dist/
     
-    - name: Create Gen1 distribution package (libfranka_gen1.mltbx)
+    - name: Create Gen1 distribution package (franka_gen1.mltbx)
       uses: matlab-actions/run-command@v2
       with:
         command: |
           addpath(genpath(pwd));
           fprintf('Creating Gen1 distribution package (libfranka 0.9.2)...\n');
-          franka_toolbox_dist_make('Mode', 'ci', 'OutputName', 'libfranka_gen1');
+          franka_toolbox_dist_make('Mode', 'ci', 'OutputName', 'franka_gen1');
           fprintf('Gen1 distribution package created!\n');
     
     - name: Verify distribution outputs
@@ -477,11 +477,11 @@ jobs:
           exit 1
         fi
         
-        if [ -f "dist/libfranka_gen1.mltbx" ]; then
-          echo "✓ libfranka_gen1.mltbx (Gen1) created successfully"
-          du -h dist/libfranka_gen1.mltbx
+        if [ -f "dist/franka_gen1.mltbx" ]; then
+          echo "✓ franka_gen1.mltbx (Gen1) created successfully"
+          du -h dist/franka_gen1.mltbx
         else
-          echo "✗ libfranka_gen1.mltbx not found!"
+          echo "✗ franka_gen1.mltbx not found!"
           exit 1
         fi
     
@@ -491,7 +491,7 @@ jobs:
         name: distribution
         path: |
           dist/franka.mltbx
-          dist/libfranka_gen1.mltbx
+          dist/.mltbx
         retention-days: 30
 
   # =============================================================================
@@ -538,13 +538,13 @@ jobs:
           exit 1
         fi
         
-        if [ -f "dist/libfranka_gen1.mltbx" ]; then
+        if [ -f "dist/franka_gen1.mltbx" ]; then
           echo "gen1_exists=true" >> $GITHUB_OUTPUT
-          echo "gen1_size=$(du -h dist/libfranka_gen1.mltbx | cut -f1)" >> $GITHUB_OUTPUT
-          echo "✓ libfranka_gen1.mltbx found"
+          echo "gen1_size=$(du -h dist/franka_gen1.mltbx | cut -f1)" >> $GITHUB_OUTPUT
+          echo "✓ franka_gen1.mltbx found"
         else
           echo "gen1_exists=false" >> $GITHUB_OUTPUT
-          echo "✗ libfranka_gen1.mltbx not found!"
+          echo "✗ franka_gen1.mltbx not found!"
           exit 1
         fi
     
@@ -563,7 +563,7 @@ jobs:
         | Package | Robot Generation | libfranka Version |
         |---------|-----------------|-------------------|
         | `franka.mltbx` | FR3, Franka Research 3 | 0.18.x |
-        | `libfranka_gen1.mltbx` | Panda, FER | 0.9.2 |
+        | `franka_gen1.mltbx` | Panda, FER | 0.9.2 |
         
         To install, either:
         1. Double-click the `.mltbx` file, or
@@ -597,7 +597,7 @@ jobs:
         | Package | Robot Generation | libfranka Version |
         |---------|-----------------|-------------------|
         | \`franka.mltbx\` | FR3, Franka Research 3 | 0.18.x |
-        | \`libfranka_gen1.mltbx\` | Panda, FER | 0.9.2 |
+        | \`franka_gen1.mltbx\` | Panda, FER | 0.9.2 |
         
         To install, either:
         1. Double-click the \`.mltbx\` file, or
@@ -612,7 +612,7 @@ jobs:
         | Package | Size | libfranka |
         |---------|------|-----------|
         | franka.mltbx | ${{ steps.check-dist.outputs.gen3_size }} | 0.18.x (Gen3/FR3) |
-        | libfranka_gen1.mltbx | ${{ steps.check-dist.outputs.gen1_size }} | 0.9.2 (Gen1/Panda) |
+        | franka_gen1.mltbx | ${{ steps.check-dist.outputs.gen1_size }} | 0.9.2 (Gen1/Panda) |
         
         - **Version**: $VERSION
         - **MEX Platforms**: Linux (R2022a), Windows (R2022a)
@@ -634,7 +634,7 @@ jobs:
         prerelease: ${{ github.event.inputs.prerelease || false }}
         files: |
           dist/franka.mltbx
-          dist/libfranka_gen1.mltbx
+          dist/franka_gen1.mltbx
           CHANGELOG.md
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -650,7 +650,7 @@ jobs:
         echo "| Package | Size | Robot Generation |" >> $GITHUB_STEP_SUMMARY
         echo "|---------|------|------------------|" >> $GITHUB_STEP_SUMMARY
         echo "| franka.mltbx | ${{ steps.check-dist.outputs.gen3_size }} | FR3 (libfranka 0.18.x) |" >> $GITHUB_STEP_SUMMARY
-        echo "| libfranka_gen1.mltbx | ${{ steps.check-dist.outputs.gen1_size }} | Panda/FER (libfranka 0.9.2) |" >> $GITHUB_STEP_SUMMARY
+        echo "| franka_gen1.mltbx | ${{ steps.check-dist.outputs.gen1_size }} | Panda/FER (libfranka 0.9.2) |" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Build Jobs" >> $GITHUB_STEP_SUMMARY
         echo "- ✅ Server Binaries Gen3 (Docker - amd64 + arm64)" >> $GITHUB_STEP_SUMMARY
