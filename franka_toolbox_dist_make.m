@@ -23,7 +23,14 @@ function franka_toolbox_dist_make(options)
     output_name = options.OutputName;
     
     %% Clean-up env
-    rm_dir('dist');
+    % In CI mode, preserve existing .mltbx files (for multi-package builds)
+    if ci_mode && exist('dist', 'dir')
+        fprintf('CI mode: preserving existing .mltbx files in dist/\n');
+        % Only remove franka_matlab subfolder, keep .mltbx files
+        rm_dir(fullfile('dist', 'franka_matlab'));
+    else
+        rm_dir('dist');
+    end
     
     % Add parent franka_matlab if it exists (for local development)
     parent_franka_matlab = '../franka_matlab';

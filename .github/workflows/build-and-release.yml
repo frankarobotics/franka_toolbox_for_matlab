@@ -426,20 +426,11 @@ jobs:
           franka_toolbox_dist_make('Mode', 'ci', 'OutputName', 'franka');
           fprintf('Gen3 distribution package created!\n');
     
-    - name: Swap in Gen1 binaries and create Gen1 package
+    - name: Swap in Gen1 binaries for Gen1 package
       run: |
         echo "=== Swapping in Gen1 binaries (libfranka 0.9.2) ==="
         
-        # Backup Gen3 binaries (optional, for debugging)
-        mkdir -p backup-gen3
-        cp common/bin.zip backup-gen3/ 2>/dev/null || true
-        cp common/bin_arm.zip backup-gen3/ 2>/dev/null || true
-        cp franka_robot_server/bin.tar.gz backup-gen3/ 2>/dev/null || true
-        cp franka_robot_server/bin_arm.tar.gz backup-gen3/ 2>/dev/null || true
-        cp dependencies/libfranka.zip backup-gen3/ 2>/dev/null || true
-        cp dependencies/libfranka_arm.zip backup-gen3/ 2>/dev/null || true
-        
-        # Replace with Gen1 binaries
+        # Replace with Gen1 binaries (franka_toolbox_dist_make preserves existing .mltbx in CI mode)
         cp gen1-binaries/common/bin_gen1.zip common/bin.zip
         cp gen1-binaries/common/bin_arm_gen1.zip common/bin_arm.zip
         cp gen1-binaries/franka_robot_server/bin_gen1.tar.gz franka_robot_server/bin.tar.gz
@@ -448,12 +439,6 @@ jobs:
         cp gen1-binaries/dependencies/libfranka_arm_gen1.zip dependencies/libfranka_arm.zip
         
         echo "Gen1 binaries swapped in successfully"
-        
-        # Clean up the dist folder for fresh Gen1 build (keep franka.mltbx)
-        mv dist/franka.mltbx /tmp/franka.mltbx
-        rm -rf dist
-        mkdir -p dist
-        mv /tmp/franka.mltbx dist/
     
     - name: Create Gen1 distribution package (franka_gen1.mltbx)
       uses: matlab-actions/run-command@v2
@@ -491,7 +476,7 @@ jobs:
         name: distribution
         path: |
           dist/franka.mltbx
-          dist/.mltbx
+          dist/franka_gen1.mltbx
         retention-days: 30
 
   # =============================================================================
