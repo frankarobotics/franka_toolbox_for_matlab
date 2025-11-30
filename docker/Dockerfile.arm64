@@ -87,10 +87,12 @@ RUN git clone https://github.com/humanoid-path-planner/hpp-fcl.git /opt/hpp-fcl 
 # Note: hpp-fcl cmake config files might be in share/ or lib/cmake - we handle both
 RUN CONFIG_FILE="/opt/sysroot-aarch64/usr/lib/cmake/hpp-fcl/hpp-fclConfig.cmake" && \
     if [ -f "$CONFIG_FILE" ]; then \
-        echo "Patching $CONFIG_FILE to bypass version check failure" && \
+        echo "Patching $CONFIG_FILE to bypass version check failure and prevent recursion" && \
+        # Add include guard at the very top to prevent infinite recursion
+        sed -i '1i if(HPP_FCL_CONFIG_INCLUDED)\n  return()\nendif()\nset(HPP_FCL_CONFIG_INCLUDED TRUE)' "$CONFIG_FILE" && \
         # Disable the fatal error check
         sed -i 's/message(FATAL_ERROR/message(STATUS/g' "$CONFIG_FILE" && \
-        # Force version variable at the top
+        # Force version variable
         sed -i '1i set(hpp-fcl_VERSION "2.4.5")' "$CONFIG_FILE" && \
         # Force FOUND=TRUE at the END of the file to override any internal logic
         echo 'set(hpp-fcl_FOUND TRUE)' >> "$CONFIG_FILE" && \
