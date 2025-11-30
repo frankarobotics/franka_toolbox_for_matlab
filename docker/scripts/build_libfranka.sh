@@ -11,6 +11,21 @@ log_info "Building libfranka ${LIBFRANKA_VERSION} for ${ARCH}..."
 LIBFRANKA_PATH="${WORKSPACE}/${FRANKA_FOLDER}"
 LIBFRANKA_BUILD_PATH="${LIBFRANKA_PATH}/build"
 
+# Check for corrupt or incomplete git repository
+if [[ -d "$LIBFRANKA_PATH" ]]; then
+    if [[ ! -d "$LIBFRANKA_PATH/.git" ]]; then
+        log_warn "libfranka directory exists but is not a git repository. Removing..."
+        rm -rf "$LIBFRANKA_PATH"
+    else
+        cd "$LIBFRANKA_PATH"
+        if ! git rev-parse --git-dir > /dev/null 2>&1; then
+            log_warn "libfranka git repository appears corrupt. Removing and re-cloning..."
+            cd "$WORKSPACE"
+            rm -rf "$LIBFRANKA_PATH"
+        fi
+    fi
+fi
+
 # Clone libfranka if not present
 if [[ ! -d "$LIBFRANKA_PATH" ]]; then
     log_info "Cloning libfranka repository..."
@@ -23,6 +38,9 @@ else
     log_info "Using existing libfranka directory"
     cd "$LIBFRANKA_PATH"
     # Ensure we're on the correct version
+    # If previous clone failed/was interrupted, git operations might fail.
+    # We'll try to recover, otherwise fail.
+    git reset --hard
     git fetch --all
     git checkout "$LIBFRANKA_VERSION"
     git submodule update --init --recursive

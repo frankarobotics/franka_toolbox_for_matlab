@@ -157,7 +157,7 @@ build_for_arch() {
     # Fix any existing root-owned files in project directories (from previous failed runs)
     log_info "Fixing existing file permissions..."
     docker run --rm -v "${PROJECT_ROOT}:/workspace:rw" alpine sh -c \
-        "chown -R $(id -u):$(id -g) /workspace/common /workspace/franka_robot_server /workspace/dependencies 2>/dev/null || true"
+        "chown -R $(id -u):$(id -g) /workspace/common /workspace/franka_robot_server /workspace/dependencies /workspace/libfranka /workspace/libfranka_arm 2>/dev/null || true"
     
     # Build Docker image
     log_info "Building Docker image: ${image_name}..."
@@ -182,6 +182,11 @@ build_for_arch() {
         --arch "${arch}" \
         --build-type "${BUILD_TYPE}" \
         --libfranka-version "${LIBFRANKA_VERSION}"
+    
+    # Fix ownership of workspace files (libfranka clone, build artifacts, etc.)
+    log_info "Fixing workspace file permissions..."
+    docker run --rm -v "${PROJECT_ROOT}:/workspace:rw" alpine sh -c \
+        "chown -R $(id -u):$(id -g) /workspace/common /workspace/franka_robot_server /workspace/dependencies /workspace/libfranka /workspace/libfranka_arm 2>/dev/null || true"
     
     # Fix ownership of output files using docker (avoids needing sudo password)
     log_info "Fixing file ownership..."

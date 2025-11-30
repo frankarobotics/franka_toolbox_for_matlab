@@ -11,6 +11,9 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Configure git to treat the workspace as safe (avoids dubious ownership errors)
+git config --global --add safe.directory '*'
+
 log_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
 }

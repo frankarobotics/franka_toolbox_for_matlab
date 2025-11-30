@@ -93,7 +93,15 @@ bundle_libfranka_deps() {
     local libfranka_build="${WORKSPACE}/${FRANKA_FOLDER}/build"
     
     # Read libfranka version for the shared library name
-    local libfranka_ver=$(cat "${WORKSPACE}/config/libfranka_ver.csv" | head -1 | tr -d '\r\n')
+    local libfranka_ver="${LIBFRANKA_VERSION}"
+    if [[ -z "$libfranka_ver" ]]; then
+        if [[ -f "${WORKSPACE}/config/libfranka_ver.csv" ]]; then
+            libfranka_ver=$(cat "${WORKSPACE}/config/libfranka_ver.csv" | head -1 | tr -d '\r\n')
+        else
+            log_error "libfranka version not found"
+            return 1
+        fi
+    fi
     local libfranka_major_minor=$(echo "$libfranka_ver" | cut -d. -f1,2)
     local libfranka_so="libfranka.so.${libfranka_major_minor}"
     
