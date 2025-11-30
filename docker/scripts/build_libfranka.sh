@@ -70,6 +70,7 @@ if [[ "$ARCH" == "arm64" ]]; then
         -Dpinocchio_DIR="/opt/sysroot-aarch64/usr/lib/cmake/pinocchio" \
         -DEigen3_DIR="/usr/lib/aarch64-linux-gnu/cmake/eigen3" \
         -DEIGEN3_INCLUDE_DIR="/usr/include/eigen3" \
+        -DEIGEN3_INCLUDE_DIRS="/usr/include/eigen3" \
         ..
 else
     log_info "Configuring libfranka for native AMD64 build..."

@@ -44,8 +44,12 @@ set(hpp-fcl_DIR /opt/sysroot-aarch64/usr/lib/cmake/hpp-fcl)
 
 # Eigen3 from apt multiarch install (libeigen3-dev:arm64)
 # This prevents CMake from finding the host's Eigen3 and causing recursion
-set(Eigen3_DIR /usr/lib/aarch64-linux-gnu/cmake/eigen3)
-set(EIGEN3_INCLUDE_DIR /usr/include/eigen3)
+# Use CACHE variables with FORCE to ensure they survive find_package() calls
+# libfranka's FindEigen3.cmake requires EIGEN3_INCLUDE_DIRS to be set
+set(Eigen3_DIR "/usr/lib/aarch64-linux-gnu/cmake/eigen3" CACHE PATH "Eigen3 config dir" FORCE)
+set(EIGEN3_INCLUDE_DIR "/usr/include/eigen3" CACHE PATH "Eigen3 include dir" FORCE)
+set(EIGEN3_INCLUDE_DIRS "/usr/include/eigen3" CACHE PATH "Eigen3 include dirs" FORCE)
+set(Eigen3_FOUND TRUE CACHE BOOL "Eigen3 found" FORCE)
 
 # Position independent code
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)

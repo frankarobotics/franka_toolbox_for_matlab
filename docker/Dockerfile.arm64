@@ -62,7 +62,6 @@ ENV CMAKE_PREFIX_PATH="/usr/local:/opt/sysroot-aarch64/usr:/usr/aarch64-linux-gn
 # 3. Cross-compile hpp-fcl for ARM64 (Required by Pinocchio)
 # Note: hpp-fcl's cmake config does nested find_package calls that can fail version checks
 # We patch the installed Config.cmake to fix cross-compilation version detection issues
-# Using ONLY mode for find_root_path prevents mixing host/target CMake configs
 RUN git clone https://github.com/humanoid-path-planner/hpp-fcl.git /opt/hpp-fcl && \
     cd /opt/hpp-fcl && \
     git checkout v2.4.5 && \
@@ -73,18 +72,12 @@ RUN git clone https://github.com/humanoid-path-planner/hpp-fcl.git /opt/hpp-fcl 
         -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
         -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
         -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
-        -DCMAKE_FIND_ROOT_PATH="/usr/aarch64-linux-gnu;/usr/lib/aarch64-linux-gnu;/usr" \
-        -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
-        -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
-        -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ONLY \
+        -DCMAKE_FIND_ROOT_PATH="/usr/aarch64-linux-gnu" \
         -DCMAKE_INSTALL_PREFIX=/opt/sysroot-aarch64/usr \
         -DCMAKE_BUILD_TYPE=Release \
         -DBUILD_PYTHON_INTERFACE=OFF \
         -DBUILD_TESTING=OFF \
-        -DGENERATE_VERSION_HEADER=ON \
-        -DCMAKE_PREFIX_PATH="/usr/lib/aarch64-linux-gnu/cmake/eigen3" \
-        -DEigen3_DIR=/usr/lib/aarch64-linux-gnu/cmake/eigen3 \
-        -DEIGEN3_INCLUDE_DIR=/usr/include/eigen3 && \
+        -DGENERATE_VERSION_HEADER=ON && \
     make -j$(nproc) && make install && \
     cd / && rm -rf /opt/hpp-fcl
 
@@ -92,7 +85,6 @@ RUN git clone https://github.com/humanoid-path-planner/hpp-fcl.git /opt/hpp-fcl 
 # Pinocchio is not in standard Ubuntu repos, so we build it.
 # It will link against the apt-installed libs (Eigen, Boost, URDFDOM, etc.)
 # Note: hpp-fcl cmake config files might be in share/ or lib/cmake - we handle both
-# Using ONLY mode for find_root_path prevents mixing host/target CMake configs
 RUN CONFIG_FILE="/opt/sysroot-aarch64/usr/lib/cmake/hpp-fcl/hpp-fclConfig.cmake" && \
     if [ -f "$CONFIG_FILE" ]; then \
         echo "Patching $CONFIG_FILE to bypass version check failure" && \
@@ -121,11 +113,8 @@ RUN CONFIG_FILE="/opt/sysroot-aarch64/usr/lib/cmake/hpp-fcl/hpp-fclConfig.cmake"
         -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
         -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
         -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
-        -DCMAKE_FIND_ROOT_PATH="/usr/aarch64-linux-gnu;/usr/lib/aarch64-linux-gnu;/opt/sysroot-aarch64" \
-        -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
-        -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
-        -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ONLY \
-        -DCMAKE_PREFIX_PATH="/opt/sysroot-aarch64/usr;/usr/lib/aarch64-linux-gnu/cmake/eigen3" \
+        -DCMAKE_FIND_ROOT_PATH="/usr/aarch64-linux-gnu;/opt/sysroot-aarch64" \
+        -DCMAKE_PREFIX_PATH=/opt/sysroot-aarch64/usr \
         -DCMAKE_INSTALL_PREFIX=/opt/sysroot-aarch64/usr \
         -DCMAKE_BUILD_TYPE=Release \
         -DBUILD_PYTHON_INTERFACE=OFF \
@@ -135,9 +124,7 @@ RUN CONFIG_FILE="/opt/sysroot-aarch64/usr/lib/cmake/hpp-fcl/hpp-fclConfig.cmake"
         -DBUILD_WITH_CASADI_SUPPORT=OFF \
         -DBUILD_WITH_CODEGEN_SUPPORT=OFF \
         -Dhpp-fcl_DIR=/opt/sysroot-aarch64/usr/lib/cmake/hpp-fcl \
-        -Dhpp-fcl_VERSION=2.4.5 \
-        -DEigen3_DIR=/usr/lib/aarch64-linux-gnu/cmake/eigen3 \
-        -DEIGEN3_INCLUDE_DIR=/usr/include/eigen3 && \
+        -Dhpp-fcl_VERSION=2.4.5 && \
     make -j$(nproc) && make install && \
     cd / && rm -rf /opt/pinocchio
 
