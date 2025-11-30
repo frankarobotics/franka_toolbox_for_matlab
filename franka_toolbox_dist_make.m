@@ -2,7 +2,13 @@ function franka_toolbox_dist_make(options)
     %FRANKA_TOOLBOX_DIST_MAKE Create distribution package for Franka Toolbox
     %
     %   franka_toolbox_dist_make() - Full build with git clean (for local dev)
-    %   franka_toolbox_dist_make('ci') - CI mode: skip git clean (for GitHub Actions)
+    %   franka_toolbox_dist_make('Mode', 'ci') - CI mode: skip git clean (for GitHub Actions)
+    %   franka_toolbox_dist_make('Mode', 'ci', 'OutputName', 'franka') - Specify output name
+    %
+    %   Options:
+    %     Mode       - 'local' (default) or 'ci'
+    %     OutputName - Base name for output file (default: 'franka')
+    %                  Output will be: dist/<OutputName>.mltbx
     %
     %   Copyright (c) 2024 Franka Robotics GmbH - All Rights Reserved
     %   This file is subject to the terms and conditions defined in the file
@@ -10,9 +16,11 @@ function franka_toolbox_dist_make(options)
     
     arguments
         options.Mode {mustBeMember(options.Mode, {'local', 'ci'})} = 'local'
+        options.OutputName {mustBeTextScalar} = 'franka'
     end
     
     ci_mode = strcmp(options.Mode, 'ci');
+    output_name = options.OutputName;
     
     %% Clean-up env
     rm_dir('dist');
@@ -75,9 +83,9 @@ function franka_toolbox_dist_make(options)
     end
     addpath(genpath(fullfile(project_root,'dist')));
 
-    fprintf('Packaging toolbox...\n');
-    matlab.addons.toolbox.packageToolbox(fullfile(target_dir,'franka_toolbox.prj'),fullfile(project_root,'dist','franka'))
-    fprintf('Toolbox packaged successfully: dist/franka.mltbx\n');
+    fprintf('Packaging toolbox as %s.mltbx...\n', output_name);
+    matlab.addons.toolbox.packageToolbox(fullfile(target_dir,'franka_toolbox.prj'),fullfile(project_root,'dist',output_name))
+    fprintf('Toolbox packaged successfully: dist/%s.mltbx\n', output_name);
 
     if has_parent_franka
         addpath(genpath(parent_franka_matlab));
