@@ -6,16 +6,16 @@
 
 ## Get Started in Minutes
 
-Pre-built toolbox packages are available on the [**GitHub Releases**](../../releases) page — no compilation required!
+Pre-built toolbox packages are available on the [**GitHub Releases**](releases) page — no compilation required!
 
 | Package | Robot | Description |
 |---------|-------|-------------|
-| `franka.mltbx` | FR3 (Franka Research 3) | For current-generation robots |
-| `franka-gen1.mltbx` | Panda / FER | For first-generation robots |
+| `franka-fr3.mltbx` | FR3 (Franka Research 3) | For current-generation robots |
+| `franka-fer.mltbx` | Panda / FER | For first-generation robots |
 
 ### Installation
 
-1. Download the appropriate `.mltbx` file from [Releases](../../releases)
+1. Download the appropriate `.mltbx` file from [Releases](releases)
 2. Double-click the file, or drag-and-drop it into MATLAB
 3. Run `franka_toolbox_install()` in MATLAB
 

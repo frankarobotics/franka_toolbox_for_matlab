@@ -95,7 +95,12 @@ After building both server binaries and MEX files:
 
     franka_toolbox_dist_make();
 
-This creates ``dist/franka.mltbx``.
+This creates ``dist/franka.mltbx`` by default. You can also specify the output name:
+
+.. code-block:: matlab
+
+    franka_toolbox_dist_make('OutputName', 'franka-fr3'); % For FR3
+    franka_toolbox_dist_make('OutputName', 'franka-fer'); % For FER
 
 CI/CD Reference
 ---------------

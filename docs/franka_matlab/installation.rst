@@ -4,15 +4,15 @@ Installation
 Toolbox Add-On Installation Methods
 -----------------------------------
 
-Option 1: Drag and drop the franka.mltbx file
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Drag and drop the ``franka.mltbx`` file into your MATLAB Command Window or
+Option 1: Drag and drop the .mltbx file
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Drag and drop the ``franka-fr3.mltbx`` (or ``franka-fer.mltbx``) file into your MATLAB Command Window or
 
 Option 2: Programmatically
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 .. code-block:: matlab
 
-    uiopen('<path to your franka.mltbx file>', 1);
+    uiopen('<path to your franka-fr3.mltbx file>', 1);
 
 Install
 ---------

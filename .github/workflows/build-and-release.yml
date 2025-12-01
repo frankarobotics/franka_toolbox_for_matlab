@@ -411,13 +411,13 @@ jobs:
           MATLAB_Coder
           Simulink_Coder
     
-    - name: Create Gen3 distribution package (franka.mltbx)
+    - name: Create Gen3 distribution package (franka-fr3.mltbx)
       uses: matlab-actions/run-command@v2
       with:
         command: |
           addpath(genpath(pwd));
           fprintf('Creating Gen3 distribution package (libfranka 0.18.x)...\n');
-          franka_toolbox_dist_make('Mode', 'ci', 'OutputName', 'franka');
+          franka_toolbox_dist_make('Mode', 'ci', 'OutputName', 'franka-fr3');
           fprintf('Gen3 distribution package created!\n');
     
     - name: Download server artifacts (Gen1 - libfranka 0.9.2)
@@ -444,13 +444,13 @@ jobs:
         rm -rf gen1-binaries
         echo "Cleaned up gen1-binaries folder"
     
-    - name: Create Gen1 distribution package (franka-gen1.mltbx)
+    - name: Create Gen1 distribution package (franka-fer.mltbx)
       uses: matlab-actions/run-command@v2
       with:
         command: |
           addpath(genpath(pwd));
           fprintf('Creating Gen1 distribution package (libfranka 0.9.2)...\n');
-          franka_toolbox_dist_make('Mode', 'ci', 'OutputName', 'franka-gen1');
+          franka_toolbox_dist_make('Mode', 'ci', 'OutputName', 'franka-fer');
           fprintf('Gen1 distribution package created!\n');
     
     - name: Verify distribution outputs
@@ -458,29 +458,29 @@ jobs:
         echo "=== Distribution Outputs ==="
         ls -la dist/
         
-        if [ -f "dist/franka.mltbx" ]; then
-          echo "✓ franka.mltbx (Gen3) created successfully"
-          du -h dist/franka.mltbx
+        if [ -f "dist/franka-fr3.mltbx" ]; then
+          echo "✓ franka-fr3.mltbx (Gen3) created successfully"
+          du -h dist/franka-fr3.mltbx
         else
-          echo "✗ franka.mltbx not found!"
+          echo "✗ franka-fr3.mltbx not found!"
           exit 1
         fi
         
-        if [ -f "dist/franka-gen1.mltbx" ]; then
-          echo "✓ franka-gen1.mltbx (Gen1) created successfully"
-          du -h dist/franka-gen1.mltbx
+        if [ -f "dist/franka-fer.mltbx" ]; then
+          echo "✓ franka-fer.mltbx (Gen1) created successfully"
+          du -h dist/franka-fer.mltbx
         else
-          echo "✗ franka-gen1.mltbx not found!"
+          echo "✗ franka-fer.mltbx not found!"
           exit 1
         fi
-    
+
     - name: Upload distribution artifacts
       uses: actions/upload-artifact@v4
       with:
         name: distribution
         path: |
-          dist/franka.mltbx
-          dist/franka-gen1.mltbx
+          dist/franka-fr3.mltbx
+          dist/franka-fer.mltbx
         retention-days: 30
 
   # =============================================================================
@@ -517,23 +517,23 @@ jobs:
         echo "=== Checking distribution files ==="
         ls -la dist/
         
-        if [ -f "dist/franka.mltbx" ]; then
+        if [ -f "dist/franka-fr3.mltbx" ]; then
           echo "gen3_exists=true" >> $GITHUB_OUTPUT
-          echo "gen3_size=$(du -h dist/franka.mltbx | cut -f1)" >> $GITHUB_OUTPUT
-          echo "✓ franka.mltbx found"
+          echo "gen3_size=$(du -h dist/franka-fr3.mltbx | cut -f1)" >> $GITHUB_OUTPUT
+          echo "✓ franka-fr3.mltbx found"
         else
           echo "gen3_exists=false" >> $GITHUB_OUTPUT
-          echo "✗ franka.mltbx not found!"
+          echo "✗ franka-fr3.mltbx not found!"
           exit 1
         fi
         
-        if [ -f "dist/franka-gen1.mltbx" ]; then
+        if [ -f "dist/franka-fer.mltbx" ]; then
           echo "gen1_exists=true" >> $GITHUB_OUTPUT
-          echo "gen1_size=$(du -h dist/franka-gen1.mltbx | cut -f1)" >> $GITHUB_OUTPUT
-          echo "✓ franka-gen1.mltbx found"
+          echo "gen1_size=$(du -h dist/franka-fer.mltbx | cut -f1)" >> $GITHUB_OUTPUT
+          echo "✓ franka-fer.mltbx found"
         else
           echo "gen1_exists=false" >> $GITHUB_OUTPUT
-          echo "✗ franka-gen1.mltbx not found!"
+          echo "✗ franka-fer.mltbx not found!"
           exit 1
         fi
     
@@ -549,18 +549,18 @@ jobs:
         
         Choose the appropriate package for your robot:
         
-        | Package | Robot Generation | libfranka Version |
-        |---------|-----------------|-------------------|
-        | `franka.mltbx` | FR3, Franka Research 3 | 0.18.x |
-        | `franka-gen1.mltbx` | Panda, FER | 0.9.2 |
-        
+        | Package | Robot | libfranka Version |
+        |---------|-------|-------------------|
+        | `franka-fr3.mltbx` | FR3 | 0.18.x |
+        | `franka-fer.mltbx` | FER | 0.9.2 |
+
         To install, either:
         1. Double-click the `.mltbx` file, or
         2. In MATLAB, go to **Home** > **Add-Ons** > **Install Add-On** and select the file
-        
+
         ## Documentation
-        
-        For detailed documentation, examples, and API reference, visit: [Franka Toolbox for MATLAB Documentation](https://frankarobotics.github.io/docs/franka_toolbox_for_matlab/docs/index.html#)
+
+        For detailed documentation, examples, and API reference, visit: [Franka Toolbox for MATLAB Documentation](https://frankarobotics.github.io/docs/franka_toolbox_for_matlab/docs/franka_matlab/index.html)
         EOF
         else
           echo "Looking for version $VERSION in CHANGELOG.md"
@@ -583,25 +583,25 @@ jobs:
         
         Choose the appropriate package for your robot:
         
-        | Package | Robot Generation | libfranka Version |
-        |---------|-----------------|-------------------|
-        | \`franka.mltbx\` | FR3, Franka Research 3 | 0.18.x |
-        | \`franka-gen1.mltbx\` | Panda, FER | 0.9.2 |
-        
+        | Package | Robot | libfranka Version |
+        |---------|-------|-------------------|
+        | \`franka-fr3.mltbx\` | FR3 | 0.18.x |
+        | \`franka-fer.mltbx\` | FER | 0.9.2 |
+
         To install, either:
         1. Double-click the \`.mltbx\` file, or
         2. In MATLAB, go to **Home** > **Add-Ons** > **Install Add-On** and select the file
-        
+
         ## Documentation
-        
-        For detailed documentation, examples, and API reference, visit: [Franka Toolbox for MATLAB Documentation](https://frankarobotics.github.io/docs/franka_toolbox_for_matlab/docs/index.html#)
+
+        For detailed documentation, examples, and API reference, visit: [Franka Toolbox for MATLAB Documentation](https://frankarobotics.github.io/docs/franka_toolbox_for_matlab/docs/franka_matlab/index.html)
         
         ## Build Information
         
         | Package | Size | libfranka |
         |---------|------|-----------|
-        | franka.mltbx | ${{ steps.check-dist.outputs.gen3_size }} | 0.18.x (Gen3/FR3) |
-        | franka-gen1.mltbx | ${{ steps.check-dist.outputs.gen1_size }} | 0.9.2 (Gen1/Panda) |
+        | franka-fr3.mltbx | ${{ steps.check-dist.outputs.gen3_size }} | 0.18.x (Gen3/FR3) |
+        | franka-fer.mltbx | ${{ steps.check-dist.outputs.gen1_size }} | 0.9.2 (Gen1/Panda) |
         
         - **Version**: $VERSION
         - **MEX Platforms**: Linux (R2023a), Windows (R2023a)
@@ -622,9 +622,8 @@ jobs:
         draft: false
         prerelease: ${{ github.event.inputs.prerelease || false }}
         files: |
-          dist/franka.mltbx
-          dist/franka-gen1.mltbx
-          CHANGELOG.md
+          dist/franka-fr3.mltbx
+          dist/franka-fer.mltbx
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
@@ -636,10 +635,10 @@ jobs:
         echo "- **Pre-release**: ${{ github.event.inputs.prerelease || false }}" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Distribution Packages" >> $GITHUB_STEP_SUMMARY
-        echo "| Package | Size | Robot Generation |" >> $GITHUB_STEP_SUMMARY
-        echo "|---------|------|------------------|" >> $GITHUB_STEP_SUMMARY
-        echo "| franka.mltbx | ${{ steps.check-dist.outputs.gen3_size }} | FR3 (libfranka 0.18.x) |" >> $GITHUB_STEP_SUMMARY
-        echo "| franka-gen1.mltbx | ${{ steps.check-dist.outputs.gen1_size }} | Panda/FER (libfranka 0.9.2) |" >> $GITHUB_STEP_SUMMARY
+        echo "| Package | Size | Robot |" >> $GITHUB_STEP_SUMMARY
+        echo "|---------|------|-------|" >> $GITHUB_STEP_SUMMARY
+        echo "| franka-fr3.mltbx | ${{ steps.check-dist.outputs.gen3_size }} | FR3 |" >> $GITHUB_STEP_SUMMARY
+        echo "| franka-fer.mltbx | ${{ steps.check-dist.outputs.gen1_size }} | FER |" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Build Jobs" >> $GITHUB_STEP_SUMMARY
         echo "- ✅ Server Binaries Gen3 (Docker - amd64 + arm64)" >> $GITHUB_STEP_SUMMARY
