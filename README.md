@@ -11,7 +11,7 @@ Pre-built toolbox packages are available on the [**GitHub Releases**](../../rele
 | Package | Robot | Description |
 |---------|-------|-------------|
 | `franka.mltbx` | FR3 (Franka Research 3) | For current-generation robots |
-| `franka_gen1.mltbx` | Panda / FER | For first-generation robots |
+| `franka-gen1.mltbx` | Panda / FER | For first-generation robots |
 
 ### Installation
 
