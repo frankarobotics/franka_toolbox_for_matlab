@@ -439,6 +439,10 @@ jobs:
         cp gen1-binaries/dependencies/libfranka_arm_gen1.zip dependencies/libfranka_arm.zip
         
         echo "Gen1 binaries swapped in successfully"
+        
+        # Cleanup: remove temporary Gen1 artifacts folder
+        rm -rf gen1-binaries
+        echo "Cleaned up gen1-binaries folder"
     
     - name: Create Gen1 distribution package (franka_gen1.mltbx)
       uses: matlab-actions/run-command@v2
