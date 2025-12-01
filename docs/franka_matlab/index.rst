@@ -38,3 +38,4 @@ The toolbox comprises two main components:
    simulink_library
    matlab_library
    troubleshooting
+   custom_build
