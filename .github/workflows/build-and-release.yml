@@ -601,7 +601,7 @@ jobs:
         | Package | Size | libfranka |
         |---------|------|-----------|
         | franka-fr3.mltbx | ${{ steps.check-dist.outputs.gen3_size }} | 0.18.x |
-        | franka-fer.mltbx | ${{ steps.check-dist.outputs.gen1_size }} | 0.9.2  |
+        | franka-fer.mltbx | ${{ steps.check-dist.outputs.gen1_size }} | 0.9.2 |
         
         - **Version**: $VERSION
         - **MEX Platforms**: Linux (R2023a), Windows (R2023a)
