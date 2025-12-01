@@ -354,12 +354,6 @@ jobs:
         name: server-binaries
         path: .
     
-    - name: Download server artifacts (Gen1 - libfranka 0.9.2)
-      uses: actions/download-artifact@v4
-      with:
-        name: server-binaries-gen1
-        path: gen1-binaries
-    
     - name: Download Linux MEX artifacts
       uses: actions/download-artifact@v4
       with:
@@ -425,6 +419,12 @@ jobs:
           fprintf('Creating Gen3 distribution package (libfranka 0.18.x)...\n');
           franka_toolbox_dist_make('Mode', 'ci', 'OutputName', 'franka');
           fprintf('Gen3 distribution package created!\n');
+    
+    - name: Download server artifacts (Gen1 - libfranka 0.9.2)
+      uses: actions/download-artifact@v4
+      with:
+        name: server-binaries-gen1
+        path: gen1-binaries
     
     - name: Swap in Gen1 binaries for Gen1 package
       run: |
