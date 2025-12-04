@@ -63,7 +63,7 @@ function franka_toolbox_binaries_all_build(varargin)
     fprintf('=== Building Host MEX Files ===\n\n');
     
     fprintf('Building Simulink library MEX files...\n');
-    franka_toolbox_simulink_library_mex();
+    franka_simulink_library_mex();
     
     fprintf('\nBuilding FrankaRobot MEX files...\n');
     franka_robot_mex();

@@ -63,7 +63,7 @@ function makecfg(objBuildInfo)
             if rt_main_src_idx
                 objBuildInfo.Src.Files(rt_main_src_idx) = [];
             end
-            addSourceFiles(objBuildInfo, 'rt_main.cpp', fullfile(franka_toolbox_installation_path_get(),'franka_toolbox_simulink_library','rtw','src'));
+            addSourceFiles(objBuildInfo, 'rt_main.cpp', fullfile(franka_toolbox_installation_path_get(),'franka_simulink_library','rtw','src'));
         end
     
         addIncludePaths(objBuildInfo,...

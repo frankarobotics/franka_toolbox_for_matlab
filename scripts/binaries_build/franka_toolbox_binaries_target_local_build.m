@@ -32,7 +32,7 @@ function franka_toolbox_binaries_target_local_build(use_docker)
         franka_toolbox_libfranka_build(libfranka_ver,true);
     
         % common 
-        franka_toolbox_common_build();
+        franka_common_build();
     
         % FrankaRobot() server
         franka_robot_server_build();

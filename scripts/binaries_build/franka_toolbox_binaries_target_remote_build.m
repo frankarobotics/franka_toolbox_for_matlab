@@ -58,7 +58,7 @@ function franka_toolbox_binaries_target_remote_build(user, ip, port, use_docker)
 
     % common 
     fprintf('\n=== Building common components ===\n');
-    franka_toolbox_common_build(user,ip,port);
+    franka_common_build(user,ip,port);
 
     % FrankaRobot() server
     fprintf('\n=== Building FrankaRobot server ===\n');

@@ -34,9 +34,9 @@ function franka_toolbox_install()
         installation_path = franka_toolbox_installation_path_get();
 
         % Unzip Simulink binaries
-        franka_toolbox_simulink_library = fullfile(installation_path, 'franka_toolbox_simulink_library');
-        unzip(fullfile(franka_toolbox_simulink_library,'bin.zip'), ...
-              fullfile(franka_toolbox_simulink_library,'blocks'));
+        franka_simulink_library = fullfile(installation_path, 'franka_simulink_library');
+        unzip(fullfile(franka_simulink_library,'bin.zip'), ...
+              fullfile(franka_simulink_library,'blocks'));
         
         % Unpack common binaries
         unzip(fullfile(installation_path, 'common', 'bin.zip'), ...

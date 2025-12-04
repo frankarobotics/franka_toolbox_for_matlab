@@ -199,7 +199,7 @@ jobs:
         command: |
           addpath(genpath(pwd));
           fprintf('Building Simulink library MEX files...\n');
-          franka_toolbox_simulink_library_mex();
+          franka_simulink_library_mex();
           fprintf('Building FrankaRobot MEX files...\n');
           franka_robot_mex();
           fprintf('MEX build complete!\n');
@@ -208,10 +208,10 @@ jobs:
       run: |
         echo "=== MEX Build Outputs ==="
         ls -la franka_robot/*.zip || echo "No franka_robot/*.zip"
-        ls -la franka_toolbox_simulink_library/*.zip || echo "No simulink library *.zip"
+        ls -la franka_simulink_library/*.zip || echo "No simulink library *.zip"
         # Show contents of zip files
         unzip -l franka_robot/bin.zip || true
-        unzip -l franka_toolbox_simulink_library/bin.zip || true
+        unzip -l franka_simulink_library/bin.zip || true
     
     - name: Upload Linux MEX artifacts
       uses: actions/upload-artifact@v4
@@ -219,12 +219,12 @@ jobs:
         name: mex-linux
         path: |
           franka_robot/bin.zip
-          franka_toolbox_simulink_library/bin.zip
+          franka_simulink_library/bin.zip
         retention-days: 7
 
   # =============================================================================
   # Job 2b: Build MEX files on Windows with MATLAB R2023a
-  # Note: Using windows-2022 because franka_toolbox_simulink_library_mex.m 
+  # Note: Using windows-2022 because franka_simulink_library_mex.m 
   #       hardcodes "Visual Studio 17 2022" generator
   # =============================================================================
   build-mex-windows:
@@ -313,7 +313,7 @@ jobs:
         command: |
           addpath(genpath(pwd));
           fprintf('Building Simulink library MEX files...\n');
-          franka_toolbox_simulink_library_mex();
+          franka_simulink_library_mex();
           fprintf('Building FrankaRobot MEX files...\n');
           franka_robot_mex();
           fprintf('MEX build complete!\n');
@@ -322,7 +322,7 @@ jobs:
       run: |
         Write-Host "=== MEX Build Outputs ==="
         Get-ChildItem -Path "franka_robot" -Filter "*.zip" -ErrorAction SilentlyContinue
-        Get-ChildItem -Path "franka_toolbox_simulink_library" -Filter "*.zip" -ErrorAction SilentlyContinue
+        Get-ChildItem -Path "franka_simulink_library" -Filter "*.zip" -ErrorAction SilentlyContinue
       shell: pwsh
     
     - name: Upload Windows MEX artifacts
@@ -331,7 +331,7 @@ jobs:
         name: mex-windows
         path: |
           franka_robot/bin.zip
-          franka_toolbox_simulink_library/bin.zip
+          franka_simulink_library/bin.zip
         retention-days: 7
 
   # =============================================================================
@@ -376,27 +376,27 @@ jobs:
         if [ -f "mex-linux/franka_robot/bin.zip" ]; then
           unzip -o "mex-linux/franka_robot/bin.zip" -d merge_franka_robot/
         fi
-        if [ -f "mex-linux/franka_toolbox_simulink_library/bin.zip" ]; then
-          unzip -o "mex-linux/franka_toolbox_simulink_library/bin.zip" -d merge_simulink_lib/
+        if [ -f "mex-linux/franka_simulink_library/bin.zip" ]; then
+          unzip -o "mex-linux/franka_simulink_library/bin.zip" -d merge_simulink_lib/
         fi
         
         # Extract Windows MEX files (will overwrite same-named files, but extensions differ)
         if [ -f "mex-windows/franka_robot/bin.zip" ]; then
           unzip -o "mex-windows/franka_robot/bin.zip" -d merge_franka_robot/
         fi
-        if [ -f "mex-windows/franka_toolbox_simulink_library/bin.zip" ]; then
-          unzip -o "mex-windows/franka_toolbox_simulink_library/bin.zip" -d merge_simulink_lib/
+        if [ -f "mex-windows/franka_simulink_library/bin.zip" ]; then
+          unzip -o "mex-windows/franka_simulink_library/bin.zip" -d merge_simulink_lib/
         fi
         
         # Create merged zip files
         cd merge_franka_robot && zip -r ../franka_robot/bin.zip . && cd ..
-        cd merge_simulink_lib && zip -r ../franka_toolbox_simulink_library/bin.zip . && cd ..
+        cd merge_simulink_lib && zip -r ../franka_simulink_library/bin.zip . && cd ..
         
         # Verify merged contents
         echo "=== Merged franka_robot/bin.zip ==="
         unzip -l franka_robot/bin.zip
-        echo "=== Merged franka_toolbox_simulink_library/bin.zip ==="
-        unzip -l franka_toolbox_simulink_library/bin.zip
+        echo "=== Merged franka_simulink_library/bin.zip ==="
+        unzip -l franka_simulink_library/bin.zip
         
         # Cleanup
         rm -rf merge_franka_robot merge_simulink_lib mex-linux mex-windows

@@ -1,4 +1,4 @@
-function franka_toolbox_simulink_library_mex()
+function franka_simulink_library_mex()
     %  Copyright (c) 2024 Franka Robotics GmbH - All Rights Reserved
     %  This file is subject to the terms and conditions defined in the file
     %  'LICENSE' , which is part of this package
@@ -7,7 +7,7 @@ function franka_toolbox_simulink_library_mex()
     installation_path = franka_toolbox_installation_path_get();
     
     % Set paths
-    simulink_lib_path = fullfile(installation_path, 'franka_toolbox_simulink_library');
+    simulink_lib_path = fullfile(installation_path, 'franka_simulink_library');
     build_dir = fullfile(simulink_lib_path, 'build');
     target_dir = fullfile(simulink_lib_path, 'bin');
     bin_zip = fullfile(simulink_lib_path, 'bin.zip');

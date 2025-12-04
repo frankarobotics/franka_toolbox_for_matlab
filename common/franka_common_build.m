@@ -1,4 +1,4 @@
-function franka_toolbox_common_build(user,ip,port)
+function franka_common_build(user,ip,port)
 
     if nargin == 0
 

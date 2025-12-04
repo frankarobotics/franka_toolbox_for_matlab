@@ -105,7 +105,7 @@ franka_toolbox_dist_make.m
       <file>${PROJECT_ROOT}/examples</file>
       <file>${PROJECT_ROOT}/franka_robot</file>
       <file>${PROJECT_ROOT}/franka_robot_server</file>
-      <file>${PROJECT_ROOT}/franka_toolbox_simulink_library</file>
+      <file>${PROJECT_ROOT}/franka_simulink_library</file>
       <file>${PROJECT_ROOT}/scripts</file>
     </fileset.rootfiles>
     <fileset.depfun.included />
