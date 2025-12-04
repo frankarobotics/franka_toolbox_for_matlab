@@ -114,8 +114,20 @@ classdef SSHExecutionTool < target.ExecutionTool
             % 5) Run with LD_LIBRARY_PATH
             fprintf('SSHExecutionTool: Starting application...\n');
             
-            runCmd = sprintf('ssh %s %s@%s ''cd %s && export LD_LIBRARY_PATH=./lib:$LD_LIBRARY_PATH && nohup ./%s > /dev/null 2>&1 & echo $!''', ...
-                sshOpts, sshUser, sshHost, remoteDir, fullExeName);
+            % We use a PID file strategy to ensure we can capture the PID without hanging
+            % waiting for stdout. 
+            pidFile = sprintf('%s/app.pid', remoteDir);
+            
+            % Clean up old PID file
+            rmCmd = sprintf('ssh %s %s@%s ''rm -f %s''', ...
+                sshOpts, sshUser, sshHost, pidFile);
+            system(rmCmd);
+            
+            % Run command: Background the process and write PID to file. 
+            % ssh -f puts ssh into the background after authentication.
+            % We use simple single quotes to protect variables from local shell expansion.
+            runCmd = sprintf('ssh -f %s %s@%s ''cd %s && export LD_LIBRARY_PATH=./lib:$LD_LIBRARY_PATH && nohup ./%s > /dev/null 2>&1 < /dev/null & echo $! > %s''', ...
+                sshOpts, sshUser, sshHost, remoteDir, fullExeName, pidFile);
             
             [status, result] = system(runCmd);
             
@@ -125,16 +137,24 @@ classdef SSHExecutionTool < target.ExecutionTool
                 return;
             end
             
-            % 6) Capture PID
+            % 6) Capture PID from file
+            % Give a small delay to ensure file is written (usually instant)
+            pause(0.5);
+            
+            readPidCmd = sprintf('ssh %s %s@%s ''cat %s''', ...
+                sshOpts, sshUser, sshHost, pidFile);
+            [status, result] = system(readPidCmd);
+            
             result = strtrim(result);
             pid = str2double(result);
-            if ~isnan(pid) && pid > 0
+            
+            if status == 0 && ~isnan(pid) && pid > 0
                 this.RemotePID = pid;
                 this.IsRunning = true;
                 fprintf('SSHExecutionTool: Started application with PID %d\n', pid);
             else
                 this.RemotePID = -1;
-                this.IsRunning = true; % Assume running even if PID capture failed (nohup)
+                this.IsRunning = true; % Assume running even if PID capture failed
                 fprintf('SSHExecutionTool: Application started (PID unknown, output: %s)\n', result);
             end
         end
