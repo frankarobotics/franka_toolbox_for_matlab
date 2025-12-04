@@ -46,13 +46,6 @@ else
     git submodule update --init --recursive
 fi
 
-# Patch libfranka for tinyxml2 case sensitivity issue on Linux
-if grep -q "find_package(tinyxml2 REQUIRED)" "$LIBFRANKA_PATH/CMakeLists.txt"; then
-    log_info "Patching libfranka CMakeLists.txt for tinyxml2 case sensitivity..."
-    sed -i 's/find_package(tinyxml2 REQUIRED)/find_package(TinyXML2 REQUIRED)/' "$LIBFRANKA_PATH/CMakeLists.txt"
-    sed -i 's/tinyxml2/TinyXML2::TinyXML2/' "$LIBFRANKA_PATH/CMakeLists.txt"
-fi
-
 # Clean and create build directory
 rm -rf "$LIBFRANKA_BUILD_PATH"
 mkdir -p "$LIBFRANKA_BUILD_PATH"
