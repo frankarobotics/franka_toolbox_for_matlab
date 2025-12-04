@@ -166,23 +166,15 @@ classdef SSHExecutionTool < target.ExecutionTool
             
             errFlag = false;
             
-            if ~this.IsRunning
-                return;
-            end
+            % Always attempt to kill, even if we think it's not running,
+            % to clear out any zombie processes that might hold the port.
             
             appPath = this.Application;
             [~, exeName, exeExt] = fileparts(appPath);
             fullExeName = char(strcat(exeName, exeExt));
             
-            if this.RemotePID > 0
-                % Try to kill by PID first
-                killCmd = sprintf('ssh %s %s@%s "kill %d 2>/dev/null || true"', ...
-                    this.SSHOptions, this.SSHUser, this.SSHHost, this.RemotePID);
-                system(killCmd);
-            end
-            
-            % Also kill by name as fallback
-            pkillCmd = sprintf('ssh %s %s@%s "pkill -f ''%s'' 2>/dev/null || true"', ...
+            % Force kill potentially multiple instances
+            pkillCmd = sprintf('ssh %s %s@%s "pkill -9 -f ''%s'' 2>/dev/null || true"', ...
                 this.SSHOptions, this.SSHUser, this.SSHHost, fullExeName);
             [status, ~] = system(pkillCmd);
             
@@ -194,7 +186,10 @@ classdef SSHExecutionTool < target.ExecutionTool
                 errFlag = false;
             end
             
-            fprintf('SSHExecutionTool: Stopped application\n');
+            fprintf('SSHExecutionTool: Stopped application (pkill)\n');
+            
+            % Small delay to allow OS to free ports
+            pause(1.0);
         end
         
         function [status, errFlag] = getApplicationStatus(this)
