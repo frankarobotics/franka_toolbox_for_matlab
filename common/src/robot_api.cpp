@@ -67,6 +67,15 @@ SimulinkFrankaRobot::SimulinkFrankaRobot(const char * robotIPmask,
     
     robot = std::make_unique<franka::Robot>(robotIPString);
     
+    // Attempt automatic error recovery to clear any previous error state
+    // This ensures the robot is ready for control even if the previous run ended with an error
+    try {
+        robot->automaticErrorRecovery();
+    } catch (const franka::Exception& e) {
+        // Robot might already be in a good state or error is unrecoverable
+        // Log but continue - the actual control loop will catch persistent errors
+    }
+    
     robotModel = std::make_unique<franka::Model>(robot->loadModel());
 }
 
@@ -104,6 +113,15 @@ SimulinkFrankaRobot& SimulinkFrankaRobot::operator=(SimulinkFrankaRobot&& otherS
     setControlModeMembersBegin();
     
     robot = std::make_unique<franka::Robot>(robotIPString);
+    
+    // Attempt automatic error recovery to clear any previous error state
+    // This ensures the robot is ready for control even if the previous run ended with an error
+    try {
+        robot->automaticErrorRecovery();
+    } catch (const franka::Exception& e) {
+        // Robot might already be in a good state or error is unrecoverable
+        // Log but continue - the actual control loop will catch persistent errors
+    }
     
     robotModel = std::make_unique<franka::Model>(robot->loadModel());
     
