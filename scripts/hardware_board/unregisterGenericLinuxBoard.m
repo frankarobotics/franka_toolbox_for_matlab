@@ -13,9 +13,15 @@ function unregisterGenericLinuxBoard
     names.Board            = "Generic Linux AMD64 Board";
     names.TargetConnection = "Generic Linux TCP Connection";
     names.Processor        = "Generic Intel-x86-64 (Linux)";
-    names.ExternalMode     = "Generic Linux TCP External Mode";
+    names.ExternalMode     = "Generic Linux XCP External Mode";
     names.ExecService      = "SSH Execution Service";
     
+    % Intermediate XCP objects that must be cleaned up explicitly if they persist
+    names.XCPConnectivity  = "XCP Connectivity";
+    names.XCPConfig        = "XCP Configuration";
+    names.XCPTransport     = "XCP TCP Transport";
+    names.XCPPlatform      = "XCP Platform Abstraction";
+
     % Legacy names just in case
     legacyNames = [
         "Generic Linux XCP Connection"
@@ -47,7 +53,13 @@ function unregisterGenericLinuxBoard
     removeObject('ExecutionService', names.ExecService);
     removeObject('ExternalMode', names.ExternalMode);
     
-    % 6) Cleanup legacy names
+    % 6) Cleanup XCP sub-objects (important because they can block re-registration)
+    removeObject('XCPExternalModeConnectivity', names.XCPConnectivity);
+    removeObject('XCP', names.XCPConfig);
+    removeObject('XCPTCPIPTransport', names.XCPTransport);
+    removeObject('XCPPlatformAbstraction', names.XCPPlatform);
+
+    % 7) Cleanup legacy names
     for i = 1:length(legacyNames)
         cleanLegacy(legacyNames(i));
     end
@@ -64,7 +76,7 @@ function unregisterGenericLinuxBoard
             % Only report if it's NOT a "not found" error
             if ~strcmp(ME.identifier, 'Target:Object:GetCheck') && ...
                ~contains(ME.message, 'does not name a class')
-                 fprintf('  Error checking %s "%s": %s\n', type, name, ME.message);
+                 % fprintf('  Error checking %s "%s": %s\n', type, name, ME.message);
             end
         end
     end
