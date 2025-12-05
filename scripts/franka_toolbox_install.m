@@ -35,28 +35,54 @@ function franka_toolbox_install()
 
         % Unzip Simulink binaries
         franka_simulink_library = fullfile(installation_path, 'franka_simulink_library');
-        unzip(fullfile(franka_simulink_library,'bin.zip'), ...
-              fullfile(franka_simulink_library,'blocks'));
+        tryUnzip(fullfile(franka_simulink_library,'bin.zip'), ...
+                 fullfile(franka_simulink_library,'blocks'));
         
         % Unpack common binaries
-        unzip(fullfile(installation_path, 'common', 'bin.zip'), ...
-              fullfile(installation_path, 'common'));
-        unzip(fullfile(installation_path, 'common', 'bin_arm.zip'), ...
-              fullfile(installation_path, 'common'));
+        tryUnzip(fullfile(installation_path, 'common', 'bin.zip'), ...
+                 fullfile(installation_path, 'common'));
+        tryUnzip(fullfile(installation_path, 'common', 'bin_arm.zip'), ...
+                 fullfile(installation_path, 'common'));
         
         % Unpack MATLAB library binaries
         matlab_robot_server_path = fullfile(installation_path, 'franka_robot_server');
-        untar(fullfile(matlab_robot_server_path, 'bin.tar.gz'), matlab_robot_server_path);
-        untar(fullfile(matlab_robot_server_path, 'bin_arm.tar.gz'), matlab_robot_server_path);
+        tryUntar(fullfile(matlab_robot_server_path, 'bin.tar.gz'), matlab_robot_server_path);
+        tryUntar(fullfile(matlab_robot_server_path, 'bin_arm.tar.gz'), matlab_robot_server_path);
         
         matlab_lib_path = fullfile(installation_path, 'franka_robot');
-        unzip(fullfile(matlab_lib_path, 'bin.zip'), matlab_lib_path);
+        tryUnzip(fullfile(matlab_lib_path, 'bin.zip'), matlab_lib_path);
         addpath(fullfile(matlab_lib_path, 'bin'));
         
         % Unpack dependencies
         deps_path = fullfile(installation_path, 'dependencies');
-        unzip(fullfile(deps_path, 'libfranka.zip'), installation_path);
-        unzip(fullfile(deps_path, 'libfranka_arm.zip'), installation_path);
+        tryUnzip(fullfile(deps_path, 'libfranka.zip'), installation_path);
+        tryUnzip(fullfile(deps_path, 'libfranka_arm.zip'), installation_path);
+    end
+
+    function tryUnzip(archivePath, destPath)
+        % Attempts to unzip an archive, shows warning if file not found
+        if ~isfile(archivePath)
+            warning('Archive not found, skipping: %s', archivePath);
+            return;
+        end
+        try
+            unzip(archivePath, destPath);
+        catch ME
+            warning('Failed to unzip %s: %s', archivePath, ME.message);
+        end
+    end
+
+    function tryUntar(archivePath, destPath)
+        % Attempts to untar an archive, shows warning if file not found
+        if ~isfile(archivePath)
+            warning('Archive not found, skipping: %s', archivePath);
+            return;
+        end
+        try
+            untar(archivePath, destPath);
+        catch ME
+            warning('Failed to untar %s: %s', archivePath, ME.message);
+        end
     end
 
     function configureSimulink()
