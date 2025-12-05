@@ -12,11 +12,15 @@ The ``FrankaRobot`` constructor initializes a connection to the Franka robot. It
 
 .. code-block:: matlab
 
-    fr = FrankaRobot();  % Uses default settings
+    fr = FrankaRobot();  % Uses default robot IP (172.16.0.2)
 
-    % Or with custom settings
+    % Or with custom robot IP
+    fr = FrankaRobot('RobotIP', '172.16.0.2');
+
+    % Or with a full settings object for advanced configuration
     settings = FrankaRobotSettings();
     settings.robot_ip = '172.16.0.2';
+    settings.home_configuration = [0, -pi/4, 0, -3*pi/4, 0, pi/2, pi/4];
     fr = FrankaRobot('Settings', settings);
 
 **Connecting via AI Companion/NVIDIA Jetson**
@@ -31,22 +35,24 @@ When using an external Target PC to control the robot, you must provide connecti
 
 .. code-block:: matlab
 
-    fr = FrankaRobot('Username', 'jetson_user', ...
+    fr = FrankaRobot('RobotIP', '172.16.0.2', ...
+                     'Username', 'jetson_user', ...
                      'ServerIP', '192.168.1.100');
 
-    % Or with custom settings
+    % Or with custom settings object
     settings = FrankaRobotSettings();
-    settings.robot_ip = '172.16.0.2';
     settings.home_configuration = [0, -pi/4, 0, -3*pi/4, 0, pi/2, pi/4];
-    fr = FrankaRobot('Settings', settings, ...
+    fr = FrankaRobot('RobotIP', '172.16.0.2', ...
+                     'Settings', settings, ...
                      'Username', 'jetson_user', ...
                      'ServerIP', '192.168.1.100');
 
 All constructor parameters are optional and have default values.
 
 Parameters:
+    - RobotIP: IP address of the Franka robot (default: '172.16.0.2').
+      Overrides ``Settings.robot_ip`` if both are provided.
     - Settings: ``FrankaRobotSettings`` object containing robot configuration (optional).
-      The ``robot_ip`` is captured at construction and becomes read-only via ``fr.RobotIP``.
       Other settings like ``collision_thresholds`` and ``load_inertia`` can be modified at runtime.
     - Username: Username for the server on the AI companion (default: 'franka')
     - ServerIP: IP address of the server on the AI companion (default: '172.16.1.2')
