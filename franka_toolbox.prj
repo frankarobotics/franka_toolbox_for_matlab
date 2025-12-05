@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.toolbox" plugin-version="1.0">
-  <configuration build-checksum="1009126672" file="/home/kvasios/franka_matlab/franka_toolbox.prj" location="/home/kvasios/franka_matlab" name="franka_toolbox" target="target.toolbox" target-name="Package Toolbox">
+  <configuration build-checksum="1009126672" file="/home/kvasios/franka_toolbox_for_matlab/franka_toolbox.prj" location="/home/kvasios/franka_toolbox_for_matlab" name="franka_toolbox" target="target.toolbox" target-name="Package Toolbox">
     <param.appname>Franka Toolbox for MATLAB</param.appname>
     <param.authnamewatermark>Franka Robotics GmbH</param.authnamewatermark>
     <param.email>info@franka.de</param.email>
@@ -7,7 +7,7 @@
     <param.summary>The Franka Toolbox for MATLAB contains a set of  Matlab &amp; Simulink libraries for interfacing the Franka Robot.</param.summary>
     <param.description />
     <param.screenshot>${PROJECT_ROOT}/data/images/franka_robot_no_ee_4_3.png</param.screenshot>
-    <param.version>3.1.0</param.version>
+    <param.version>4.0.0</param.version>
     <param.output>${PROJECT_ROOT}/Franka Toolbox for MATLAB.mltbx</param.output>
     <param.products.name>
       <item>MATLAB</item>
@@ -22,10 +22,10 @@
       <item>14</item>
     </param.products.id>
     <param.products.version>
-      <item>24.1</item>
-      <item>24.1</item>
-      <item>24.1</item>
-      <item>24.1</item>
+      <item>9.14</item>
+      <item>10.7</item>
+      <item>5.6</item>
+      <item>9.9</item>
     </param.products.version>
     <param.platforms />
     <param.guid>36861653-1081-46df-aedd-6ae570ddebac</param.guid>
@@ -92,15 +92,17 @@ franka_toolbox_dist_make.m
       <file>${PROJECT_ROOT}</file>
     </fileset.rootdir>
     <fileset.rootfiles>
+      <file>${PROJECT_ROOT}/.dockerignore</file>
+      <file>${PROJECT_ROOT}/.gitattributes</file>
       <file>${PROJECT_ROOT}/.github</file>
-      <file>${PROJECT_ROOT}/LICENCE</file>
+      <file>${PROJECT_ROOT}/LICENSE</file>
       <file>${PROJECT_ROOT}/README.md</file>
       <file>${PROJECT_ROOT}/common</file>
       <file>${PROJECT_ROOT}/config</file>
       <file>${PROJECT_ROOT}/data</file>
       <file>${PROJECT_ROOT}/dependencies</file>
-      <file>${PROJECT_ROOT}/dist</file>
       <file>${PROJECT_ROOT}/doc</file>
+      <file>${PROJECT_ROOT}/docker</file>
       <file>${PROJECT_ROOT}/docs</file>
       <file>${PROJECT_ROOT}/examples</file>
       <file>${PROJECT_ROOT}/franka_robot</file>
@@ -112,11 +114,11 @@ franka_toolbox_dist_make.m
     <fileset.depfun.excluded />
     <fileset.package />
     <build-deliverables>
-      <file location="${PROJECT_ROOT}" name="Franka Toolbox for MATLAB.mltbx" optional="false">/home/kvasios/franka_matlab/Franka Toolbox for MATLAB.mltbx</file>
+      <file location="${PROJECT_ROOT}" name="Franka Toolbox for MATLAB.mltbx" optional="false">/home/kvasios/franka_toolbox_for_matlab/Franka Toolbox for MATLAB.mltbx</file>
     </build-deliverables>
     <workflow />
     <matlab>
-      <root>/usr/local/MATLAB/R2024a</root>
+      <root>/usr/local/MATLAB/R2023a</root>
       <toolboxes>
         <toolbox name="matlabcoder" />
         <toolbox name="embeddedcoder" />
