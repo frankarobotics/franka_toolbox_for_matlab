@@ -30,21 +30,27 @@ classdef FrankaRobot < handle
             %
             % Usage:
             %   robot = FrankaRobot()                          % Local server, default settings
+            %   robot = FrankaRobot('RobotIP', '172.16.0.2')   % Local server, custom robot IP
             %   robot = FrankaRobot('Settings', mySettings)    % Local server, custom settings
-            %   robot = FrankaRobot('Username', 'franka', 'ServerIP', '172.16.1.2', ...)  % Remote server
+            %   robot = FrankaRobot('RobotIP', '172.16.0.2', 'Username', 'franka', 'ServerIP', '172.16.1.2', ...)  % Remote server
             %
             % Parameters:
+            %   'RobotIP'    - IP address of the Franka robot (default: '172.16.0.2')
+            %                  Overrides Settings.robot_ip if both are provided.
             %   'Settings'   - FrankaRobotSettings object (optional, uses defaults if not provided)
             %                  Note: robot_ip is captured at construction and cannot be changed.
             %                  Other settings (collision_thresholds, load_inertia, etc.) can be
             %                  modified at runtime via setCollisionThresholds(), setLoadInertia().
-            %   'Username'   - SSH username for remote server connection
-            %   'ServerIP'   - IP address of remote server host
+            %   'Username'   - SSH username for remote server connection (default: 'franka')
+            %   'ServerIP'   - IP address of remote server host (default: '172.16.1.2')
             %   'SSHPort'    - SSH port (default: '22')
             %   'ServerPort' - RPC server port (default: '5001')
             
             % Create input parser
             p = inputParser;
+            
+            % Robot IP can be provided directly for convenience
+            addParameter(p, 'RobotIP', '', @ischar);
             
             % Settings can be provided directly - uses FrankaRobotSettings as single source of truth
             addParameter(p, 'Settings', FrankaRobotSettings(), @(x) isa(x, 'FrankaRobotSettings'));
@@ -62,8 +68,12 @@ classdef FrankaRobot < handle
             % Store the Settings object
             obj.Settings = params.Settings;
             
-            % Capture robot_ip at construction time (immutable)
-            obj.RobotIP = obj.Settings.robot_ip;
+            % RobotIP parameter overrides Settings.robot_ip if provided
+            if ~isempty(params.RobotIP)
+                obj.RobotIP = params.RobotIP;
+            else
+                obj.RobotIP = obj.Settings.robot_ip;
+            end
             
             % Initialize server based on parameters
             if all(strcmp({params.Username, params.ServerIP, params.SSHPort, params.ServerPort}, ...
