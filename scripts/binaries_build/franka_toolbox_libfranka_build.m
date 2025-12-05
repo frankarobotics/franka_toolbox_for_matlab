@@ -54,19 +54,22 @@ function wontdo = franka_toolbox_libfranka_build(libfranka_version,force_install
     
     libfranka_path = fullfile(installation_path, folder_name);
     libfranka_build_path = fullfile(libfranka_path,'build');
-    franka_toolbox_system_cmd(['git clone --recursive https://github.com/frankarobotics/libfranka ',folder_name],installation_path,true);
-    franka_toolbox_system_cmd(['git checkout ',libfranka_version],libfranka_path,true);
-    franka_toolbox_system_cmd('git submodule update',libfranka_path,true);
+    
+    % Execute git commands with verbose output
+    opts = struct('verbose', true, 'nothrow', false);
+    franka_toolbox_local_exec(['git clone --recursive https://github.com/frankarobotics/libfranka ', folder_name], installation_path, opts);
+    franka_toolbox_local_exec(['git checkout ', libfranka_version], libfranka_path, opts);
+    franka_toolbox_local_exec('git submodule update', libfranka_path, opts);
     
     % Check if build directory exists and remove it
     if exist(libfranka_build_path, 'dir')
         rmdir(libfranka_build_path, 's');
     end
-    franka_toolbox_system_cmd('mkdir build',libfranka_path);
+    franka_toolbox_local_exec('mkdir build', libfranka_path);
     
     if ~clone_only
-        franka_toolbox_system_cmd('cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF -DCMAKE_PREFIX_PATH="/opt/openrobots/lib/cmake" ..',libfranka_build_path,true);
-        franka_toolbox_system_cmd('cmake --build .',libfranka_build_path,true);
+        franka_toolbox_local_exec('cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF -DCMAKE_PREFIX_PATH="/opt/openrobots/lib/cmake" ..', libfranka_build_path, opts);
+        franka_toolbox_local_exec('cmake --build .', libfranka_build_path, opts);
 
         % libfranka runtime dependencies bundle
         franka_toolbox_libfranka_deps_bundle();

@@ -46,31 +46,32 @@ classdef FrankaRobotServer < handle
                 % Set up remote workspace if not already done
                 remoteDir = obj.getRemoteDir();
                 
-                % Construct SSH command based on platform
-                if obj.isWindows
-                    sshCmd = ['ssh.exe -o ConnectTimeout=5 -o BatchMode=yes -p ' obj.SSHPort ' ' obj.Username '@' obj.ServerIP];
-                else
-                    sshCmd = ['ssh -o ConnectTimeout=5 -o BatchMode=yes -p ' obj.SSHPort ' ' obj.Username '@' obj.ServerIP];
-                end
-                
                 % Check if executable already exists on remote machine
-                [status, ~] = system([sshCmd ' "test -x ' remoteDir '/franka_robot_server"']);
+                [status, ~] = obj.sshExec(['test -x ' remoteDir '/franka_robot_server']);
                 if status ~= 0
                     obj.setupRemoteWorkspace();
                 end
                 
                 % Run on remote machine
                 if obj.isWindows
-                    cmd = [sshCmd ' "cd ' remoteDir ' && (./franka_robot_server ' obj.ServerIP ' ' ...
-                        obj.ServerPort ' > output.log 2>&1 & echo $! > pidfile)"'];
+                    remoteCmd = ['cd ' remoteDir ' && (./franka_robot_server ' obj.ServerIP ' ' ...
+                        obj.ServerPort ' > output.log 2>&1 & echo $! > pidfile)'];
                 else
-                    cmd = [sshCmd ' "cd ' remoteDir ' && (./franka_robot_server ' obj.ServerIP ' ' ...
-                        obj.ServerPort ' > output.log 2>&1 & echo \$! > pidfile)"'];
+                    remoteCmd = ['cd ' remoteDir ' && (./franka_robot_server ' obj.ServerIP ' ' ...
+                        obj.ServerPort ' > output.log 2>&1 & echo \$! > pidfile)'];
+                end
+                [status, ~] = obj.sshExec(remoteCmd);
+                
+                if status ~= 0
+                    error('Failed to start the franka_robot_server');
                 end
                 
-                % Update paths for remote operation
+                % Update log path for remote operation
                 obj.logFile = [remoteDir '/output.log'];
-                pidFile = [remoteDir '/pidfile'];
+                
+                % Wait and read PID
+                pause(1); % Give time for process to start
+                obj.readRemotePid();
             else
                 if obj.isWindows
                     error('Local operation is not supported on Windows hosts');
@@ -78,68 +79,23 @@ classdef FrankaRobotServer < handle
                 
                 % Check if executable exists
                 if ~exist(execPath, 'file')
-                    error('Executable not found at: %s', execPath);
+                    error(['Executable not found at: %s\n' ...
+                           'Run franka_robot_server_build() to build the server.'], execPath);
                 end
                 
                 % Run on local machine
-				% Quote paths to handle spaces in directories/file names
-				q = @(p) ['''', p, ''''];
-				cmd = [q(execPath) ' ' obj.ServerIP ' ' obj.ServerPort ...
-					' > ' q(obj.logFile) ' 2>&1 & echo $! > ' q(pidFile)];
-            end
-
-            % Execute command
-            [status, ~] = system(cmd);
-            if status ~= 0
-                error('Failed to start the franka_robot_server');
-            end
-            
-            % Wait and read PID
-            pause(1); % Give time for remote operation
-            
-            if obj.isRemote
-                % Wait for remote pidfile to be created (with timeout)
-                maxWaitTime = 5; % seconds
-                waitTime = 0;
-                pidExists = false;
-                remoteDir = obj.getRemoteDir();
+                q = @(p) ['''', p, ''''];
+                cmd = [q(execPath) ' ' obj.ServerIP ' ' obj.ServerPort ...
+                    ' > ' q(obj.logFile) ' 2>&1 & echo $! > ' q(pidFile)];
                 
-                if obj.isWindows
-                    sshCmd = ['ssh.exe -o ConnectTimeout=5 -o BatchMode=yes -p ' obj.SSHPort ' ' obj.Username '@' obj.ServerIP];
-                else
-                    sshCmd = ['ssh -o ConnectTimeout=5 -o BatchMode=yes -p ' obj.SSHPort ' ' obj.Username '@' obj.ServerIP];
+                [status, ~] = franka_toolbox_local_exec(cmd, obj.execDir);
+                if status ~= 0
+                    error('Failed to start the franka_robot_server');
                 end
                 
-                while waitTime < maxWaitTime && ~pidExists
-                    [status, ~] = system([sshCmd ' "test -f ' remoteDir '/pidfile"']);
-                    pidExists = (status == 0);
-                    if ~pidExists
-                        pause(0.1);
-                        waitTime = waitTime + 0.1;
-                    end
-                end
-                
-                if ~pidExists
-                    error('Remote PID file was not created within timeout period');
-                end
-                
-                [~, pidStr] = system([sshCmd ' "cat ' remoteDir '/pidfile"']);
-                obj.pid = str2double(strtrim(pidStr));
-            else
-                % Wait for pidfile to be created (with timeout)
-                maxWaitTime = 5; % seconds
-                waitTime = 0;
-                while ~exist(pidFile, 'file') && waitTime < maxWaitTime
-                    pause(0.1);
-                    waitTime = waitTime + 0.1;
-                end
-                
-                if ~exist(pidFile, 'file')
-                    error('PID file was not created within timeout period');
-                end
-                
-                obj.pid = str2double(fileread(pidFile));
-                obj.outputFid = fopen(obj.logFile, 'r');
+                % Wait and read PID
+                pause(1);
+                obj.readLocalPid(pidFile);
             end
             
             if obj.pid <= 0
@@ -150,12 +106,7 @@ classdef FrankaRobotServer < handle
         function stop(obj)
             if ~isempty(obj.pid) && obj.isRunning()
                 if obj.isRemote
-                    if obj.isWindows
-                        sshCmd = ['ssh.exe -o ConnectTimeout=5 -o BatchMode=yes -o StrictHostKeyChecking=no -p ' obj.SSHPort ' ' obj.Username '@' obj.ServerIP];
-                    else
-                        sshCmd = ['ssh -o ConnectTimeout=5 -o BatchMode=yes -p ' obj.SSHPort ' ' obj.Username '@' obj.ServerIP];
-                    end
-                    system([sshCmd ' "kill ' num2str(obj.pid) '"']);
+                    obj.sshExec(['kill ' num2str(obj.pid)]);
                 else
                     system(['kill ', num2str(obj.pid)]);
                 end
@@ -169,12 +120,7 @@ classdef FrankaRobotServer < handle
                 return;
             end
             if obj.isRemote
-                if obj.isWindows
-                    sshCmd = ['ssh.exe -o ConnectTimeout=5 -o BatchMode=yes -p ' obj.SSHPort ' ' obj.Username '@' obj.ServerIP];
-                else
-                    sshCmd = ['ssh -o ConnectTimeout=5 -o BatchMode=yes -p ' obj.SSHPort ' ' obj.Username '@' obj.ServerIP];
-                end
-                [status, ~] = system([sshCmd ' "ps -p ' num2str(obj.pid) '"']);
+                [status, ~] = obj.sshExec(['ps -p ' num2str(obj.pid)]);
             else
                 [status, ~] = system(['ps -p ', num2str(obj.pid)]);
             end
@@ -184,12 +130,7 @@ classdef FrankaRobotServer < handle
         function lines = getOutput(obj)
             lines = {};
             if obj.isRemote
-                if obj.isWindows
-                    sshCmd = ['ssh.exe -o ConnectTimeout=5 -o BatchMode=yes -p ' obj.SSHPort ' ' obj.Username '@' obj.ServerIP];
-                else
-                    sshCmd = ['ssh -o ConnectTimeout=5 -o BatchMode=yes -p ' obj.SSHPort ' ' obj.Username '@' obj.ServerIP];
-                end
-                [~, output] = system([sshCmd ' "cat ' obj.logFile '"']);
+                [~, output] = obj.sshExec(['cat ' obj.logFile]);
                 if ~isempty(output)
                     lines = strsplit(output, '\n');
                 end
@@ -198,7 +139,7 @@ classdef FrankaRobotServer < handle
                     while ~feof(obj.outputFid)
                         line = fgetl(obj.outputFid);
                         if ischar(line)
-                            lines{end+1} = line;
+                            lines{end+1} = line; %#ok<AGROW>
                         end
                     end
                 end
@@ -214,58 +155,34 @@ classdef FrankaRobotServer < handle
             
             remoteDir = obj.getRemoteDir();
             remoteMatlabWs = obj.getRemoteMatlabWsDir();
+            scpOpts = struct('recursive', false, 'nothrow', false);
+            scpOptsRecursive = struct('recursive', true, 'nothrow', false);
             
-            if obj.isWindows
-                sshCmd = ['ssh.exe -o ConnectTimeout=5 -o BatchMode=yes -p ' obj.SSHPort ' ' obj.Username '@' obj.ServerIP];
-                scpCmd = ['scp.exe -P ' obj.SSHPort];
-            else
-                sshCmd = ['ssh -o ConnectTimeout=5 -o BatchMode=yes -p ' obj.SSHPort ' ' obj.Username '@' obj.ServerIP];
-                scpCmd = ['scp -P ' obj.SSHPort];
-            end
-            execPath = fullfile(obj.execDir,'franka_robot_server');
-            
-            % Create remote directory
-            system([sshCmd ' "mkdir -p ' remoteDir '"']);
+            % Create remote directories
+            obj.sshExec(['mkdir -p ' remoteDir]);
+            obj.sshExec(['mkdir -p ' remoteMatlabWs]);
             
             % Copy executable to remote machine
-            % Quote local path to handle spaces in directory names
-            quotedExecPath = ['"' strrep(execPath,'\','/') '"'];
-            [status, ~] = system([scpCmd ' ' quotedExecPath ' ' obj.Username '@' obj.ServerIP ':' remoteDir '/']);
-            if status ~= 0
-                error('Failed to copy executable to remote machine');
-            end
+            execPath = fullfile(obj.execDir, 'franka_robot_server');
+            franka_toolbox_scp(execPath, [':' remoteDir '/'], ...
+                obj.Username, obj.ServerIP, obj.SSHPort, scpOpts);
             
             % Copy libfranka folder to remote machine (architecture-specific)
-            libfrankaPath = fullfile(franka_toolbox_installation_path_get(), ['libfranka' obj.archSuffix],'build','usr');
-            % Quote local path to handle spaces in directory names
-            quotedLibfrankaPath = ['"' strrep(libfrankaPath,'\','/') '"'];
-            system([sshCmd ' "mkdir -p ' remoteMatlabWs '"']);
-            [status, ~] = system([scpCmd ' -r ' quotedLibfrankaPath ' ' obj.Username '@' obj.ServerIP ':' remoteMatlabWs '/']);
-            if status ~= 0
-                error('Failed to copy libfranka%s folder to remote machine', obj.archSuffix);
-            end
+            libfrankaPath = fullfile(franka_toolbox_installation_path_get(), ...
+                ['libfranka' obj.archSuffix], 'build', 'usr');
+            franka_toolbox_scp(libfrankaPath, [':' remoteMatlabWs '/'], ...
+                obj.Username, obj.ServerIP, obj.SSHPort, scpOptsRecursive);
         end
 
         function deleteRemoteWorkspace(obj)
             % Deletes the remote workspace directory and all its contents
             if obj.isRemote
-                if obj.isWindows
-                    fullRemoteDir = ['/home/' obj.Username '/franka_matlab_ws'];
-                    sshCmd = ['ssh.exe -o ConnectTimeout=5 -o BatchMode=yes -p ' obj.SSHPort ' ' obj.Username '@' obj.ServerIP];
-                else
-                    remoteDir = '~/franka_matlab_ws';
-                    sshCmd = ['ssh -o ConnectTimeout=5 -o BatchMode=yes -p ' obj.SSHPort ' ' obj.Username '@' obj.ServerIP];
-                end
-                
                 % Stop the server if it's running
                 obj.stop();
                 
                 % Delete the remote workspace
-                if obj.isWindows
-                    [status, ~] = system([sshCmd ' "rm -rf ' fullRemoteDir '"']);
-                else
-                    [status, ~] = system([sshCmd ' "rm -rf ' remoteDir '"']);
-                end
+                remoteWsRoot = obj.getRemoteWorkspaceRoot();
+                [status, ~] = obj.sshExec(['rm -rf ' remoteWsRoot]);
                 if status ~= 0
                     warning('Failed to delete remote workspace directory');
                 end
@@ -325,19 +242,48 @@ classdef FrankaRobotServer < handle
                 warning('cleanupRemote only applies to remote configurations');
             end
         end
+        
+        function s = status(obj)
+            % Returns a struct with diagnostic information about the server
+            %   s = server.status()
+            %
+            % Returns:
+            %   s.running   - true if server process is running
+            %   s.pid       - process ID (empty if not started)
+            %   s.mode      - 'local' or 'remote'
+            %   s.serverIP  - server IP address
+            %   s.port      - server port
+            %   s.logFile   - path to log file
+            
+            s = struct();
+            s.running = obj.isRunning();
+            s.pid = obj.pid;
+            s.mode = conditional(obj.isRemote, 'remote', 'local');
+            s.serverIP = obj.ServerIP;
+            s.port = obj.ServerPort;
+            s.logFile = obj.logFile;
+            
+            if obj.isRemote
+                s.remoteUser = obj.Username;
+                s.sshPort = obj.SSHPort;
+                s.architecture = obj.archSuffix;
+            end
+            
+            function result = conditional(cond, trueVal, falseVal)
+                if cond
+                    result = trueVal;
+                else
+                    result = falseVal;
+                end
+            end
+        end
     end
     
     methods (Access = private)
         function cleanup(obj)
             if obj.isRemote
                 remoteDir = obj.getRemoteDir();
-                if obj.isWindows
-                    sshCmd = ['ssh.exe -o ConnectTimeout=5 -o BatchMode=yes -p ' obj.SSHPort ' ' obj.Username '@' obj.ServerIP];
-                    system([sshCmd ' "rm -f ' remoteDir '/output.log ' remoteDir '/pidfile"']);
-                else
-                    sshCmd = ['ssh -o ConnectTimeout=5 -o BatchMode=yes -p ' obj.SSHPort ' ' obj.Username '@' obj.ServerIP];
-                    system([sshCmd ' "rm -f ' remoteDir '/output.log ' remoteDir '/pidfile"']);
-                end
+                obj.sshExec(['rm -f ' remoteDir '/output.log ' remoteDir '/pidfile']);
             else
                 if ~isempty(obj.outputFid)
                     fclose(obj.outputFid);
@@ -353,21 +299,43 @@ classdef FrankaRobotServer < handle
             obj.pid = [];
         end
         
+        function [status, output] = sshExec(obj, cmd, options)
+            % Execute SSH command using centralized utility
+            % Wrapper around franka_toolbox_ssh_exec with instance properties
+            if nargin < 3
+                options = struct('nothrow', true);
+            end
+            [status, output] = franka_toolbox_ssh_exec(cmd, obj.Username, ...
+                obj.ServerIP, obj.SSHPort, options);
+        end
+        
+        function validateSSHConnection(obj)
+            % Validate SSH connection before attempting remote operations
+            opts = struct('nothrow', false, 'timeout', 5);
+            try
+                franka_toolbox_ssh_exec('echo ok', obj.Username, obj.ServerIP, obj.SSHPort, opts);
+            catch
+                error(['SSH connection to %s@%s:%s failed.\n' ...
+                       'Ensure:\n' ...
+                       '  1. The remote host is reachable\n' ...
+                       '  2. SSH key authentication is configured (BatchMode is used)\n' ...
+                       '  3. Username and port are correct'], ...
+                       obj.Username, obj.ServerIP, obj.SSHPort);
+            end
+        end
+        
         function archSuffix = detectRemoteArchitecture(obj)
             % Detect the architecture of the remote machine
             % Returns: '_arm' for aarch64/ARM, '' for x86_64/amd64
             
-            if obj.isWindows
-                sshCmd = ['ssh.exe -o ConnectTimeout=5 -o BatchMode=yes -p ' obj.SSHPort ' ' obj.Username '@' obj.ServerIP];
-            else
-                sshCmd = ['ssh -o ConnectTimeout=5 -o BatchMode=yes -p ' obj.SSHPort ' ' obj.Username '@' obj.ServerIP];
-            end
+            % Validate connection first
+            obj.validateSSHConnection();
             
             % Use uname -m to detect architecture
-            [status, output] = system([sshCmd ' "uname -m"']);
+            [status, output] = obj.sshExec('uname -m');
             
             if status ~= 0
-                error('Failed to detect remote architecture. Please check SSH connection.');
+                error('Failed to detect remote architecture.');
             end
             
             % Parse architecture string
@@ -383,7 +351,6 @@ classdef FrankaRobotServer < handle
                     warning('Unknown architecture "%s", assuming x86_64', arch);
                     archSuffix = '';
             end
-            
         end
         
         function remoteDir = getRemoteDir(obj)
@@ -403,6 +370,57 @@ classdef FrankaRobotServer < handle
                 remoteMatlabWs = ['~/franka_matlab_ws/libfranka' obj.archSuffix '/build'];
             end
         end
+        
+        function remoteWsRoot = getRemoteWorkspaceRoot(obj)
+            % Get the remote workspace root directory
+            if obj.isWindows
+                remoteWsRoot = ['/home/' obj.Username '/franka_matlab_ws'];
+            else
+                remoteWsRoot = '~/franka_matlab_ws';
+            end
+        end
+        
+        function readRemotePid(obj)
+            % Wait for remote pidfile to be created and read PID
+            maxWaitTime = 5; % seconds
+            waitTime = 0;
+            pidExists = false;
+            remoteDir = obj.getRemoteDir();
+            
+            while waitTime < maxWaitTime && ~pidExists
+                [status, ~] = obj.sshExec(['test -f ' remoteDir '/pidfile']);
+                pidExists = (status == 0);
+                if ~pidExists
+                    pause(0.1);
+                    waitTime = waitTime + 0.1;
+                end
+            end
+            
+            if ~pidExists
+                error('Remote PID file was not created within timeout period');
+            end
+            
+            [~, pidStr] = obj.sshExec(['cat ' remoteDir '/pidfile']);
+            obj.pid = str2double(strtrim(pidStr));
+        end
+        
+        function readLocalPid(obj, pidFile)
+            % Wait for local pidfile to be created and read PID
+            maxWaitTime = 5; % seconds
+            waitTime = 0;
+            
+            while ~exist(pidFile, 'file') && waitTime < maxWaitTime
+                pause(0.1);
+                waitTime = waitTime + 0.1;
+            end
+            
+            if ~exist(pidFile, 'file')
+                error('PID file was not created within timeout period');
+            end
+            
+            obj.pid = str2double(fileread(pidFile));
+            obj.outputFid = fopen(obj.logFile, 'r');
+        end
     end
     
     methods (Static)
@@ -413,21 +431,16 @@ classdef FrankaRobotServer < handle
             %   serverIP - IP address of remote server
             %   sshPort - SSH port number (as string)
             
-            isWindows = ispc();
-            if isWindows
-                fullRemoteDir = ['/home/' username '/franka_matlab_ws'];
-                sshCmd = ['ssh.exe -o ConnectTimeout=5 -o BatchMode=yes -p ' sshPort ' ' username '@' serverIP];
+            if ispc()
+                remoteWsRoot = ['/home/' username '/franka_matlab_ws'];
             else
-                remoteDir = '~/franka_matlab_ws';
-                sshCmd = ['ssh -o ConnectTimeout=5 -o BatchMode=yes -p ' sshPort ' ' username '@' serverIP];
+                remoteWsRoot = '~/franka_matlab_ws';
             end
-
-            % Delete the remote workspace
-            if isWindows
-                [status, ~] = system([sshCmd ' "rm -rf ' fullRemoteDir '"']);
-            else
-                [status, ~] = system([sshCmd ' "rm -rf ' remoteDir '"']);
-            end
+            
+            % Use centralized SSH utility
+            opts = struct('nothrow', true);
+            [status, ~] = franka_toolbox_ssh_exec(['rm -rf ' remoteWsRoot], ...
+                username, serverIP, sshPort, opts);
             if status ~= 0
                 warning('Failed to delete remote workspace directory');
             end

@@ -15,9 +15,11 @@ function franka_robot_mex()
     	mkdir(destination_path);
     end
     
+    opts = struct('verbose', true, 'nothrow', false);
+    
     if isunix()
         % Generate capnp files first
-        franka_toolbox_system_cmd('./generate_capnp.sh',franka_robot_server_path,true);
+        franka_toolbox_local_exec('./generate_capnp.sh', franka_robot_server_path, opts);
         
         mex_string = strjoin({...
             'mex', ...
@@ -38,7 +40,7 @@ function franka_robot_mex()
     elseif ispc()
 
         % Generate capnp files first
-        franka_toolbox_system_cmd('generate_capnp.bat',franka_robot_server_path,true);
+        franka_toolbox_local_exec('generate_capnp.bat', franka_robot_server_path, opts);
         
         capnproto_installation_dir = 'C:\Program Files (x86)\capnproto-c++-win32-1.0.2\capnproto-c++-1.0.2\src';
 

@@ -12,9 +12,13 @@ function franka_toolbox_linuxdeploy_install(user,ip,port)
         linuxdeploy_appimage = franka_toolbox_linuxdeploy_get();
         aarch64_path = linuxdeploy_appimage{2};
 
-        franka_toolbox_remote_system_cmd(['rm -rf ','~/franka-dev-tools',' && mkdir -p ','~/franka-dev-tools'],'~',user,ip,port);
-        franka_toolbox_foder_remote_cp(aarch64_path,user,ip,'~/franka-dev-tools/linuxdeploy-aarch64.AppImage',port);
-        franka_toolbox_remote_system_cmd('./linuxdeploy-aarch64.AppImage --appimage-extract','~/franka-dev-tools',user,ip,port);
+        sshOpts = struct('nothrow', false);
+        franka_toolbox_ssh_exec('rm -rf ~/franka-dev-tools && mkdir -p ~/franka-dev-tools', user, ip, port, sshOpts);
+        
+        scpOpts = struct('nothrow', false);
+        franka_toolbox_scp(aarch64_path, ':~/franka-dev-tools/linuxdeploy-aarch64.AppImage', user, ip, port, scpOpts);
+        
+        franka_toolbox_ssh_exec('cd ~/franka-dev-tools && ./linuxdeploy-aarch64.AppImage --appimage-extract', user, ip, port, sshOpts);
 
     end
 

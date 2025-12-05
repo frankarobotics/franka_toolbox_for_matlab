@@ -30,9 +30,7 @@ function appimage_path = franka_toolbox_linuxdeploy_get()
         % Download on-the-fly into tmp if missing
         if ~isfile(appimage_path{i})
             cmd = ['wget -q -O ', appimage_name, ' ', url, ' && chmod +x ', appimage_name];
-            franka_toolbox_system_cmd(cmd, base_tmp);
+            franka_toolbox_local_exec(cmd, base_tmp);
         end
     end
 end
-
-

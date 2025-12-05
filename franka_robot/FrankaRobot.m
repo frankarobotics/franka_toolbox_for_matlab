@@ -6,63 +6,50 @@ classdef FrankaRobot < handle
         DefaultServerIP = '172.16.1.2';
         DefaultSSHPort = '22';
         DefaultServerPort = '5001';
-
-        % Set standard default values for the Robot Settings
-        DefaultTorqueThresholds = [20.0, 20.0, 18.0, 18.0, 16.0, 14.0, 12.0];
-        
-        DefaultForceThresholds = [20.0, 20.0, 20.0, 25.0, 25.0, 25.0];
-
-        DefaultCollisionThresholds = struct(...
-            'lower_torque_thresholds_acceleration', FrankaRobot.DefaultTorqueThresholds, ...
-            'upper_torque_thresholds_acceleration', FrankaRobot.DefaultTorqueThresholds, ...
-            'lower_torque_thresholds_nominal', FrankaRobot.DefaultTorqueThresholds, ...
-            'upper_torque_thresholds_nominal', FrankaRobot.DefaultTorqueThresholds, ...
-            'lower_force_thresholds_acceleration', FrankaRobot.DefaultForceThresholds, ...
-            'upper_force_thresholds_acceleration', FrankaRobot.DefaultForceThresholds, ...
-            'lower_force_thresholds_nominal', FrankaRobot.DefaultForceThresholds, ...
-            'upper_force_thresholds_nominal', FrankaRobot.DefaultForceThresholds ...
-        )
-        
-        DefaultLoadInertia = struct(...
-            'mass', 0, ...
-            'center_of_mass', [0,0,0], ...
-            'load_inertia', [0.001,0,0;0,0.001,0;0,0,0.001] ...
-        )
-        % Robot IP Address
-        DefaultRobotIP = '172.16.0.2';
-
-        % Default Settings
-        DefaultSettings = struct(...
-            'homeConfiguration', [0, -pi/4, 0, -3 * pi/4, 0, pi/2, pi/4], ...
-            'collisionThresholds', FrankaRobot.DefaultCollisionThresholds, ...
-            'loadInertia', FrankaRobot.DefaultLoadInertia ...
-        )
     end
     
     properties
-        Settings
+        Settings     % FrankaRobotSettings instance (runtime-modifiable settings)
         Server
         Gripper
         VacuumGripper
     end
     
+    properties (SetAccess = private)
+        RobotIP      % Robot IP address (immutable after construction)
+    end
+    
     properties (SetAccess = private, Hidden = true)
-        RobotIP
         frankaRobotHandle
     end
     
     methods
         %% Constructor
         function obj = FrankaRobot(varargin)
-            % Initialize Settings with DefaultSettings
-            obj.Settings = obj.DefaultSettings;
+            % FrankaRobot Constructor
+            %
+            % Usage:
+            %   robot = FrankaRobot()                          % Local server, default settings
+            %   robot = FrankaRobot('Settings', mySettings)    % Local server, custom settings
+            %   robot = FrankaRobot('Username', 'franka', 'ServerIP', '172.16.1.2', ...)  % Remote server
+            %
+            % Parameters:
+            %   'Settings'   - FrankaRobotSettings object (optional, uses defaults if not provided)
+            %                  Note: robot_ip is captured at construction and cannot be changed.
+            %                  Other settings (collision_thresholds, load_inertia, etc.) can be
+            %                  modified at runtime via setCollisionThresholds(), setLoadInertia().
+            %   'Username'   - SSH username for remote server connection
+            %   'ServerIP'   - IP address of remote server host
+            %   'SSHPort'    - SSH port (default: '22')
+            %   'ServerPort' - RPC server port (default: '5001')
             
             % Create input parser
             p = inputParser;
             
-            % Define parameters with default values
-            addParameter(p, 'RobotIP', FrankaRobot.DefaultRobotIP, @ischar);
-
+            % Settings can be provided directly - uses FrankaRobotSettings as single source of truth
+            addParameter(p, 'Settings', FrankaRobotSettings(), @(x) isa(x, 'FrankaRobotSettings'));
+            
+            % Server connection parameters
             addParameter(p, 'Username', obj.DefaultServerUsername, @ischar);
             addParameter(p, 'ServerIP', obj.DefaultServerIP, @ischar);
             addParameter(p, 'SSHPort', obj.DefaultSSHPort, @ischar);
@@ -70,12 +57,13 @@ classdef FrankaRobot < handle
             
             % Parse the inputs
             parse(p, varargin{:});
-            
-            % Get the results
             params = p.Results;
             
-            % Store the RobotIP in Settings
-            obj.RobotIP = params.RobotIP;
+            % Store the Settings object
+            obj.Settings = params.Settings;
+            
+            % Capture robot_ip at construction time (immutable)
+            obj.RobotIP = obj.Settings.robot_ip;
             
             % Initialize server based on parameters
             if all(strcmp({params.Username, params.ServerIP, params.SSHPort, params.ServerPort}, ...
@@ -184,35 +172,39 @@ classdef FrankaRobot < handle
 
         function result = setCollisionThresholds(obj, thresholds)
             % Set collision thresholds and apply them to the robot
-            obj.Settings.collisionThresholds = thresholds;
+            % Input: thresholds - FrankaRobotCollisionThresholds object
+            obj.Settings.collision_thresholds = thresholds;
+            ct = obj.Settings.collision_thresholds;
             result = franka_robot('set_collision_behavior', obj.frankaRobotHandle, ...
-                obj.Settings.collisionThresholds.lower_torque_thresholds_acceleration, ...
-                obj.Settings.collisionThresholds.upper_torque_thresholds_acceleration, ...
-                obj.Settings.collisionThresholds.lower_torque_thresholds_nominal, ...
-                obj.Settings.collisionThresholds.upper_torque_thresholds_nominal, ...
-                obj.Settings.collisionThresholds.lower_force_thresholds_acceleration, ...
-                obj.Settings.collisionThresholds.upper_force_thresholds_acceleration, ...
-                obj.Settings.collisionThresholds.lower_force_thresholds_nominal, ...
-                obj.Settings.collisionThresholds.upper_force_thresholds_nominal);
+                ct.lower_torque_thresholds_acceleration, ...
+                ct.upper_torque_thresholds_acceleration, ...
+                ct.lower_torque_thresholds_nominal, ...
+                ct.upper_torque_thresholds_nominal, ...
+                ct.lower_force_thresholds_acceleration, ...
+                ct.upper_force_thresholds_acceleration, ...
+                ct.lower_force_thresholds_nominal, ...
+                ct.upper_force_thresholds_nominal);
         end
 
         function thresholds = getCollisionThresholds(obj)
             % Get the current collision thresholds
-            thresholds = obj.Settings.collisionThresholds;
+            thresholds = obj.Settings.collision_thresholds;
         end
 
         function result = setLoadInertia(obj, loadInertia)
             % Set load inertia parameters and apply them to the robot
-            obj.Settings.loadInertia = loadInertia;
+            % Input: loadInertia - FrankaRobotLoadInertia object
+            obj.Settings.load_inertia = loadInertia;
+            li = obj.Settings.load_inertia;
             result = franka_robot('set_load', obj.frankaRobotHandle, ...
-                obj.Settings.loadInertia.mass, ...
-                obj.Settings.loadInertia.center_of_mass, ...
-                obj.Settings.loadInertia.load_inertia);
+                li.mass, ...
+                li.center_of_mass, ...
+                li.inertia_matrix);
         end
 
         function inertia = getLoadInertia(obj)
             % Get the current load inertia parameters
-            inertia = obj.Settings.loadInertia;
+            inertia = obj.Settings.load_inertia;
         end
 
         %% Robot Homing
@@ -220,7 +212,7 @@ classdef FrankaRobot < handle
             % Move the robot to its home configuration using point-to-point motion
             % Returns true if the motion was successful, false otherwise
             if ~isempty(obj.frankaRobotHandle)
-                result = obj.joint_point_to_point_motion(obj.DefaultSettings.homeConfiguration,.1);
+                result = obj.joint_point_to_point_motion(obj.Settings.home_configuration, 0.1);
             else
                 error('Franka Robot server is not connected. Please check the Server Status.');
             end
@@ -229,22 +221,154 @@ classdef FrankaRobot < handle
         %% Reset Settings
         function resetSettings(obj)
             % Reset all settings to their default values
-            obj.Settings = obj.DefaultSettings;
+            obj.Settings = FrankaRobotSettings();
             
             % Apply the reset settings to the robot
             obj.applySettings();
         end
 
+        %% Impedance Control
+        function result = setJointImpedance(obj, K_theta)
+            % Set the impedance for each joint in the internal controller
+            % Input: K_theta - 7-element array of joint stiffness values [Nm/rad]
+            %        If not provided, uses Settings.joint_impedance_stiffness
+            % Returns: true if successful, false otherwise
+            if ~isempty(obj.frankaRobotHandle)
+                if nargin < 2
+                    K_theta = obj.Settings.joint_impedance_stiffness;
+                else
+                    validateattributes(K_theta, {'numeric'}, {'numel', 7, 'positive'});
+                    obj.Settings.joint_impedance_stiffness = K_theta(:)';
+                end
+                result = franka_robot('set_joint_impedance', obj.frankaRobotHandle, K_theta(:)');
+            else
+                error('Franka Robot server is not connected. Please check the Server Status.');
+            end
+        end
+
+        function K_theta = getJointImpedance(obj)
+            % Get the current joint impedance stiffness values
+            % Returns: 7-element array of joint stiffness values [Nm/rad]
+            K_theta = obj.Settings.joint_impedance_stiffness;
+        end
+
+        function result = setCartesianImpedance(obj, K_x)
+            % Set the Cartesian stiffness/compliance in the internal controller
+            % Input: K_x - 6-element array for (x, y, z, roll, pitch, yaw) stiffness
+            %              [N/m, N/m, N/m, Nm/rad, Nm/rad, Nm/rad]
+            %        If not provided, uses Settings.cartesian_impedance_stiffness
+            % Returns: true if successful, false otherwise
+            if ~isempty(obj.frankaRobotHandle)
+                if nargin < 2
+                    K_x = obj.Settings.cartesian_impedance_stiffness;
+                else
+                    validateattributes(K_x, {'numeric'}, {'numel', 6, 'positive'});
+                    obj.Settings.cartesian_impedance_stiffness = K_x(:)';
+                end
+                result = franka_robot('set_cartesian_impedance', obj.frankaRobotHandle, K_x(:)');
+            else
+                error('Franka Robot server is not connected. Please check the Server Status.');
+            end
+        end
+
+        function K_x = getCartesianImpedance(obj)
+            % Get the current Cartesian impedance stiffness values
+            % Returns: 6-element array for (x, y, z, roll, pitch, yaw) stiffness
+            K_x = obj.Settings.cartesian_impedance_stiffness;
+        end
+
+        %% Guiding Mode
+        function result = setGuidingMode(obj, guiding_mode, elbow)
+            % Lock or unlock guiding mode movement in (x, y, z, roll, pitch, yaw)
+            % Input: guiding_mode - 6-element logical array, true = unlocked, false = locked
+            %        elbow - logical scalar, true = unlock elbow movement
+            % Returns: true if successful, false otherwise
+            if ~isempty(obj.frankaRobotHandle)
+                validateattributes(guiding_mode, {'logical'}, {'numel', 6});
+                validateattributes(elbow, {'logical'}, {'scalar'});
+                result = franka_robot('set_guiding_mode', obj.frankaRobotHandle, guiding_mode(:)', elbow);
+            else
+                error('Franka Robot server is not connected. Please check the Server Status.');
+            end
+        end
+
+        %% Frame Transformations
+        function result = setK(obj, EE_T_K)
+            % Set the transformation from end effector frame to stiffness frame
+            % Input: EE_T_K - 4x4 homogeneous transformation matrix
+            %        If not provided, uses Settings.EE_T_K
+            % Returns: true if successful, false otherwise
+            if ~isempty(obj.frankaRobotHandle)
+                if nargin < 2
+                    EE_T_K = obj.Settings.EE_T_K;
+                else
+                    validateattributes(EE_T_K, {'numeric'}, {'size', [4, 4]});
+                    obj.Settings.EE_T_K = EE_T_K;
+                end
+                % Convert to column-major (MATLAB default) flattened array
+                result = franka_robot('set_k', obj.frankaRobotHandle, EE_T_K(:)');
+            else
+                error('Franka Robot server is not connected. Please check the Server Status.');
+            end
+        end
+
+        function EE_T_K = getK(obj)
+            % Get the current EE_T_K transformation matrix
+            % Returns: 4x4 homogeneous transformation matrix
+            EE_T_K = obj.Settings.EE_T_K;
+        end
+
+        function result = setEE(obj, NE_T_EE)
+            % Set the transformation from nominal end effector to end effector frame
+            % Input: NE_T_EE - 4x4 homogeneous transformation matrix
+            %        If not provided, uses Settings.NE_T_EE
+            % Returns: true if successful, false otherwise
+            if ~isempty(obj.frankaRobotHandle)
+                if nargin < 2
+                    NE_T_EE = obj.Settings.NE_T_EE;
+                else
+                    validateattributes(NE_T_EE, {'numeric'}, {'size', [4, 4]});
+                    obj.Settings.NE_T_EE = NE_T_EE;
+                end
+                % Convert to column-major (MATLAB default) flattened array
+                result = franka_robot('set_ee', obj.frankaRobotHandle, NE_T_EE(:)');
+            else
+                error('Franka Robot server is not connected. Please check the Server Status.');
+            end
+        end
+
+        function NE_T_EE = getEE(obj)
+            % Get the current NE_T_EE transformation matrix
+            % Returns: 4x4 homogeneous transformation matrix
+            NE_T_EE = obj.Settings.NE_T_EE;
+        end
+
+        %% Stop Robot
+        function result = stop(obj)
+            % Stop all currently running motions
+            % Returns: true if successful, false otherwise
+            if ~isempty(obj.frankaRobotHandle)
+                result = franka_robot('stop_robot', obj.frankaRobotHandle);
+            else
+                error('Franka Robot server is not connected. Please check the Server Status.');
+            end
+        end
+
         function initialize(obj)
-            % Initialize the robot
+            % Initialize the robot using the immutable RobotIP
             franka_robot('initialize_robot', obj.frankaRobotHandle, obj.RobotIP);
         end
     end
 
     methods (Access = private)
         function applySettings(obj)
-            obj.setCollisionThresholds(obj.Settings.collisionThresholds);
-            obj.setLoadInertia(obj.Settings.loadInertia);
+            % Apply all settings from the Settings object to the robot
+            obj.setCollisionThresholds(obj.Settings.collision_thresholds);
+            obj.setLoadInertia(obj.Settings.load_inertia);
+            obj.setJointImpedance();      % Uses Settings.joint_impedance_stiffness
+            obj.setCartesianImpedance();  % Uses Settings.cartesian_impedance_stiffness
+            obj.setEE();                  % Uses Settings.NE_T_EE
+            obj.setK();                   % Uses Settings.EE_T_K
         end
     end
 end

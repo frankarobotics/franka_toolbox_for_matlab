@@ -31,3 +31,5 @@
 *.pdf binary
 *.png binary
 *.xlsx binary
+*.zip binary
+*.tar.gz binary

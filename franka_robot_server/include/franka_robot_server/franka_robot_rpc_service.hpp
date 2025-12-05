@@ -71,6 +71,28 @@ public:
     kj::Promise<void> vacuumGripperStop(
         capnp::CallContext<VacuumGripperStopParams, VacuumGripperStopResults> context) override;
 
+    // Impedance control
+    kj::Promise<void> setJointImpedance(
+        capnp::CallContext<SetJointImpedanceParams, SetJointImpedanceResults> context) override;
+
+    kj::Promise<void> setCartesianImpedance(
+        capnp::CallContext<SetCartesianImpedanceParams, SetCartesianImpedanceResults> context) override;
+
+    // Guiding mode
+    kj::Promise<void> setGuidingMode(
+        capnp::CallContext<SetGuidingModeParams, SetGuidingModeResults> context) override;
+
+    // Frame transformations
+    kj::Promise<void> setK(
+        capnp::CallContext<SetKParams, SetKResults> context) override;
+
+    kj::Promise<void> setEE(
+        capnp::CallContext<SetEEParams, SetEEResults> context) override;
+
+    // Robot control
+    kj::Promise<void> stopRobot(
+        capnp::CallContext<StopRobotParams, StopRobotResults> context) override;
+
 private:
     std::unique_ptr<franka::Robot> robot_;
     std::unique_ptr<franka::Model> model_;

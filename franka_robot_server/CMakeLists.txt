@@ -68,6 +68,10 @@ set(SOURCES
     src/joint_trajectory_motion.cpp
     src/collision_behavior.cpp
     src/load_inertia.cpp
+    src/impedance_control.cpp
+    src/guiding_mode.cpp
+    src/frame_transformations.cpp
+    src/stop_robot.cpp
     ${RPC_SRCS}
     ${RPC_HDRS}
 )

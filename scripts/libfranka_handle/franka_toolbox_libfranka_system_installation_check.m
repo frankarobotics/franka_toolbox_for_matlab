@@ -24,7 +24,7 @@ function libfranka_version = franka_toolbox_libfranka_system_installation_check(
     if ~remote
         [~, r] = system(ld_search_cmd);
     else 
-        [~, r] = franka_toolbox_remote_system_cmd(ld_search_cmd,'~',user,ip,port);
+        [~, r] = franka_toolbox_ssh_exec(ld_search_cmd, user, ip, port);
     end
 
     if ~isempty(r)
