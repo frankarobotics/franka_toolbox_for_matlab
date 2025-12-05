@@ -10,6 +10,7 @@ classdef FrankaRobotServer < handle
         execDir
         isRemote    % Flag to indicate remote operation
         isWindows   % Flag to indicate Windows host
+        archSuffix  % Architecture suffix for bin directory ('', '_arm', etc.)
     end
     
     methods
@@ -17,6 +18,7 @@ classdef FrankaRobotServer < handle
             % Constructor for FrankaRobotServer
             obj.isRemote = false;
             obj.isWindows = ispc();
+            obj.archSuffix = ''; % Default for local execution
             
             if nargin == 4
                 obj.isRemote = true;
@@ -25,14 +27,13 @@ classdef FrankaRobotServer < handle
                 obj.ServerIP = ServerIP;
                 obj.SSHPort = SSHPort;
                 obj.ServerPort = ServerPort;
+                
+                % Detect remote architecture
+                obj.archSuffix = obj.detectRemoteArchitecture();
             end
             
             % Set up execution directory and log file
-            arch = '';
-            if obj.isRemote
-                arch = '_arm';
-            end
-            obj.execDir = fullfile(franka_toolbox_installation_path_get(), 'franka_robot_server', ['bin',arch]);
+            obj.execDir = fullfile(franka_toolbox_installation_path_get(), 'franka_robot_server', ['bin', obj.archSuffix]);
             obj.logFile = fullfile(obj.execDir, 'output.log');
         end
         
@@ -43,7 +44,7 @@ classdef FrankaRobotServer < handle
             
             if obj.isRemote
                 % Set up remote workspace if not already done
-                remoteDir = '~/franka_matlab_ws/franka_robot_server/bin_arm';
+                remoteDir = obj.getRemoteDir();
                 
                 % Construct SSH command based on platform
                 if obj.isWindows
@@ -53,21 +54,14 @@ classdef FrankaRobotServer < handle
                 end
                 
                 % Check if executable already exists on remote machine
-                if obj.isWindows
-                    % For Windows, use explicit home directory path instead of tilde
-                    fullRemoteDir = ['/home/' obj.Username '/franka_matlab_ws/franka_robot_server/bin_arm'];
-                    [status, ~] = system([sshCmd ' "test -x ' fullRemoteDir '/franka_robot_server"']);
-                else
-                    [status, ~] = system([sshCmd ' "test -x ' remoteDir '/franka_robot_server"']);
-                end
+                [status, ~] = system([sshCmd ' "test -x ' remoteDir '/franka_robot_server"']);
                 if status ~= 0
                     obj.setupRemoteWorkspace();
                 end
                 
                 % Run on remote machine
                 if obj.isWindows
-                    fullRemoteDir = ['/home/' obj.Username '/franka_matlab_ws/franka_robot_server/bin_arm'];
-                    cmd = [sshCmd ' "cd ' fullRemoteDir ' && (./franka_robot_server ' obj.ServerIP ' ' ...
+                    cmd = [sshCmd ' "cd ' remoteDir ' && (./franka_robot_server ' obj.ServerIP ' ' ...
                         obj.ServerPort ' > output.log 2>&1 & echo $! > pidfile)"'];
                 else
                     cmd = [sshCmd ' "cd ' remoteDir ' && (./franka_robot_server ' obj.ServerIP ' ' ...
@@ -75,13 +69,8 @@ classdef FrankaRobotServer < handle
                 end
                 
                 % Update paths for remote operation
-                if obj.isWindows
-                    obj.logFile = ['/home/' obj.Username '/franka_matlab_ws/franka_robot_server/bin_arm/output.log'];
-                    pidFile = ['/home/' obj.Username '/franka_matlab_ws/franka_robot_server/bin_arm/pidfile'];
-                else
-                    obj.logFile = [remoteDir '/output.log'];
-                    pidFile = [remoteDir '/pidfile'];
-                end
+                obj.logFile = [remoteDir '/output.log'];
+                pidFile = [remoteDir '/pidfile'];
             else
                 if obj.isWindows
                     error('Local operation is not supported on Windows hosts');
@@ -113,6 +102,7 @@ classdef FrankaRobotServer < handle
                 maxWaitTime = 5; % seconds
                 waitTime = 0;
                 pidExists = false;
+                remoteDir = obj.getRemoteDir();
                 
                 if obj.isWindows
                     sshCmd = ['ssh.exe -o ConnectTimeout=5 -o BatchMode=yes -p ' obj.SSHPort ' ' obj.Username '@' obj.ServerIP];
@@ -121,13 +111,7 @@ classdef FrankaRobotServer < handle
                 end
                 
                 while waitTime < maxWaitTime && ~pidExists
-                    if obj.isWindows
-                        % For Windows, use explicit home directory path instead of tilde
-                        fullRemoteDir = ['/home/' obj.Username '/franka_matlab_ws/franka_robot_server/bin_arm'];
-                        [status, ~] = system([sshCmd ' "test -f ' fullRemoteDir '/pidfile"']);
-                    else
-                        [status, ~] = system([sshCmd ' "test -f ' remoteDir '/pidfile"']);
-                    end
+                    [status, ~] = system([sshCmd ' "test -f ' remoteDir '/pidfile"']);
                     pidExists = (status == 0);
                     if ~pidExists
                         pause(0.1);
@@ -139,12 +123,7 @@ classdef FrankaRobotServer < handle
                     error('Remote PID file was not created within timeout period');
                 end
                 
-                if obj.isWindows
-                    fullRemoteDir = ['/home/' obj.Username '/franka_matlab_ws/franka_robot_server/bin_arm'];
-                    [~, pidStr] = system([sshCmd ' "cat ' fullRemoteDir '/pidfile"']);
-                else
-                    [~, pidStr] = system([sshCmd ' "cat ' remoteDir '/pidfile"']);
-                end
+                [~, pidStr] = system([sshCmd ' "cat ' remoteDir '/pidfile"']);
                 obj.pid = str2double(strtrim(pidStr));
             else
                 % Wait for pidfile to be created (with timeout)
@@ -233,47 +212,37 @@ classdef FrankaRobotServer < handle
         function setupRemoteWorkspace(obj)
             % Sets up the remote workspace by creating directories and copying necessary files
             
+            remoteDir = obj.getRemoteDir();
+            remoteMatlabWs = obj.getRemoteMatlabWsDir();
+            
             if obj.isWindows
-                fullRemoteDir = ['/home/' obj.Username '/franka_matlab_ws/franka_robot_server/bin_arm'];
-                fullRemoteMatlabWs = ['/home/' obj.Username '/franka_matlab_ws/libfranka_arm/build'];
                 sshCmd = ['ssh.exe -o ConnectTimeout=5 -o BatchMode=yes -p ' obj.SSHPort ' ' obj.Username '@' obj.ServerIP];
                 scpCmd = ['scp.exe -P ' obj.SSHPort];
             else
-                remoteDir = '~/franka_matlab_ws/franka_robot_server/bin_arm';
-                remoteMatlabWs = '~/franka_matlab_ws/libfranka_arm/build';
                 sshCmd = ['ssh -o ConnectTimeout=5 -o BatchMode=yes -p ' obj.SSHPort ' ' obj.Username '@' obj.ServerIP];
                 scpCmd = ['scp -P ' obj.SSHPort];
             end
             execPath = fullfile(obj.execDir,'franka_robot_server');
             
             % Create remote directory
-            if obj.isWindows
-                system([sshCmd ' "mkdir -p ' fullRemoteDir '"']);
-            else
-                system([sshCmd ' "mkdir -p ' remoteDir '"']);
-            end
+            system([sshCmd ' "mkdir -p ' remoteDir '"']);
             
             % Copy executable to remote machine
-            if obj.isWindows
-                [status, ~] = system([scpCmd ' ' strrep(execPath,'\','/') ' ' obj.Username '@' obj.ServerIP ':' fullRemoteDir '/']);
-            else
-                [status, ~] = system([scpCmd ' ' strrep(execPath,'\','/') ' ' obj.Username '@' obj.ServerIP ':' remoteDir '/']);
-            end
+            % Quote local path to handle spaces in directory names
+            quotedExecPath = ['"' strrep(execPath,'\','/') '"'];
+            [status, ~] = system([scpCmd ' ' quotedExecPath ' ' obj.Username '@' obj.ServerIP ':' remoteDir '/']);
             if status ~= 0
                 error('Failed to copy executable to remote machine');
             end
             
-            % Copy libfranka_arm folder to remote machine
-            libfrankaPath = fullfile(franka_toolbox_installation_path_get(), 'libfranka_arm','build','usr');
-            if obj.isWindows
-                system([sshCmd ' "mkdir -p ' fullRemoteMatlabWs '"']);
-                [status, ~] = system([scpCmd ' -r ' strrep(libfrankaPath,'\','/') ' ' obj.Username '@' obj.ServerIP ':' fullRemoteMatlabWs '/']);
-            else
-                system([sshCmd ' "mkdir -p ' remoteMatlabWs '"']);
-                [status, ~] = system([scpCmd ' -r ' strrep(libfrankaPath,'\','/') ' ' obj.Username '@' obj.ServerIP ':' remoteMatlabWs '/']);
-            end
+            % Copy libfranka folder to remote machine (architecture-specific)
+            libfrankaPath = fullfile(franka_toolbox_installation_path_get(), ['libfranka' obj.archSuffix],'build','usr');
+            % Quote local path to handle spaces in directory names
+            quotedLibfrankaPath = ['"' strrep(libfrankaPath,'\','/') '"'];
+            system([sshCmd ' "mkdir -p ' remoteMatlabWs '"']);
+            [status, ~] = system([scpCmd ' -r ' quotedLibfrankaPath ' ' obj.Username '@' obj.ServerIP ':' remoteMatlabWs '/']);
             if status ~= 0
-                error('Failed to copy libfranka_arm folder to remote machine');
+                error('Failed to copy libfranka%s folder to remote machine', obj.archSuffix);
             end
         end
 
@@ -361,13 +330,12 @@ classdef FrankaRobotServer < handle
     methods (Access = private)
         function cleanup(obj)
             if obj.isRemote
+                remoteDir = obj.getRemoteDir();
                 if obj.isWindows
                     sshCmd = ['ssh.exe -o ConnectTimeout=5 -o BatchMode=yes -p ' obj.SSHPort ' ' obj.Username '@' obj.ServerIP];
-                    fullRemoteDir = ['/home/' obj.Username '/franka_matlab_ws/franka_robot_server/bin_arm'];
-                    system([sshCmd ' "rm -f ' fullRemoteDir '/output.log ' fullRemoteDir '/pidfile"']);
+                    system([sshCmd ' "rm -f ' remoteDir '/output.log ' remoteDir '/pidfile"']);
                 else
                     sshCmd = ['ssh -o ConnectTimeout=5 -o BatchMode=yes -p ' obj.SSHPort ' ' obj.Username '@' obj.ServerIP];
-                    remoteDir = '~/franka_matlab_ws/franka_robot_server/bin_arm';
                     system([sshCmd ' "rm -f ' remoteDir '/output.log ' remoteDir '/pidfile"']);
                 end
             else
@@ -383,6 +351,57 @@ classdef FrankaRobotServer < handle
                 end
             end
             obj.pid = [];
+        end
+        
+        function archSuffix = detectRemoteArchitecture(obj)
+            % Detect the architecture of the remote machine
+            % Returns: '_arm' for aarch64/ARM, '' for x86_64/amd64
+            
+            if obj.isWindows
+                sshCmd = ['ssh.exe -o ConnectTimeout=5 -o BatchMode=yes -p ' obj.SSHPort ' ' obj.Username '@' obj.ServerIP];
+            else
+                sshCmd = ['ssh -o ConnectTimeout=5 -o BatchMode=yes -p ' obj.SSHPort ' ' obj.Username '@' obj.ServerIP];
+            end
+            
+            % Use uname -m to detect architecture
+            [status, output] = system([sshCmd ' "uname -m"']);
+            
+            if status ~= 0
+                error('Failed to detect remote architecture. Please check SSH connection.');
+            end
+            
+            % Parse architecture string
+            arch = strtrim(output);
+            
+            % Map architecture to suffix
+            switch arch
+                case {'aarch64', 'arm64', 'armv8l'}
+                    archSuffix = '_arm';
+                case {'x86_64', 'amd64', 'i686', 'i386'}
+                    archSuffix = '';
+                otherwise
+                    warning('Unknown architecture "%s", assuming x86_64', arch);
+                    archSuffix = '';
+            end
+            
+        end
+        
+        function remoteDir = getRemoteDir(obj)
+            % Get the remote directory path based on platform and architecture
+            if obj.isWindows
+                remoteDir = ['/home/' obj.Username '/franka_matlab_ws/franka_robot_server/bin' obj.archSuffix];
+            else
+                remoteDir = ['~/franka_matlab_ws/franka_robot_server/bin' obj.archSuffix];
+            end
+        end
+        
+        function remoteMatlabWs = getRemoteMatlabWsDir(obj)
+            % Get the remote MATLAB workspace directory path based on platform and architecture
+            if obj.isWindows
+                remoteMatlabWs = ['/home/' obj.Username '/franka_matlab_ws/libfranka' obj.archSuffix '/build'];
+            else
+                remoteMatlabWs = ['~/franka_matlab_ws/libfranka' obj.archSuffix '/build'];
+            end
         end
     end
     
