@@ -11,7 +11,7 @@ Pre-built toolbox packages are available on the [**GitHub Releases**](releases) 
 | Package | Robot | Description |
 |---------|-------|-------------|
 | `franka-fr3.mltbx` | FR3 (Franka Research 3) | For current-generation robots |
-| `franka-fer.mltbx` | Panda / FER | For first-generation robots |
+| `franka-fer.mltbx` | FER | For first-generation robots |
 
 ### Installation
 
