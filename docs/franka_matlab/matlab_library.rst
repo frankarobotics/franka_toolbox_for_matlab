@@ -8,6 +8,8 @@ FrankaRobot Class
 
 The ``FrankaRobot`` constructor initializes a connection to the Franka robot. It can be configured for two primary scenarios: connecting to a robot on a local network (Host PC) or connecting to a robot via an external AI companion computer like a Jetson.
 
+Multiple ``FrankaRobot`` instances can be created simultaneously, each managing its own server lifecycle independently.
+
 **Local Host PC as Target PC**
 
 .. code-block:: matlab
