@@ -253,9 +253,15 @@ classdef FrankaRobotServer < handle
         end
         
         function arch = detectRemoteArch(obj)
-            % Validate connection
-            opts = struct('nothrow', false, 'timeout', 5);
-            franka_toolbox_ssh_exec('echo ok', obj.Username, obj.ServerIP, obj.SSHPort, opts);
+            % Validate connection with user-friendly error
+            opts = struct('nothrow', true, 'timeout', 5);
+            [status, ~] = franka_toolbox_ssh_exec('echo ok', obj.Username, ...
+                obj.ServerIP, obj.SSHPort, opts);
+            if status ~= 0
+                error('FrankaRobotServer:ConnectionFailed', ...
+                    'Cannot connect to %s@%s:%s\nPlease verify the ServerIP, SSHPort, and Username are correct.', ...
+                    obj.Username, obj.ServerIP, obj.SSHPort);
+            end
             
             [~, out] = obj.ssh('uname -m');
             out = strtrim(out);
