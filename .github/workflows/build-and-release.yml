@@ -544,39 +544,33 @@ jobs:
         
         if [ ! -f "CHANGELOG.md" ]; then
           echo "CHANGELOG.md not found, creating basic release notes"
-          cat > RELEASE_NOTES.md << 'EOF'
-        ## Installation
+          cat > VERSION_CHANGELOG.md << EOF
+        ## What's New
         
-        Choose the appropriate package for your robot:
-        
-        | Package | Robot | libfranka Version |
-        |---------|-------|-------------------|
-        | `franka-fr3.mltbx` | FR3 | 0.18.x |
-        | `franka-fer.mltbx` | FER | 0.9.2 |
-
-        To install, either:
-        1. Double-click the `.mltbx` file, or
-        2. In MATLAB, go to **Home** > **Add-Ons** > **Install Add-On** and select the file
-
-        ## Documentation
-
-        For detailed documentation, examples, and API reference, visit: [Franka Toolbox for MATLAB Documentation](https://frankarobotics.github.io/docs/franka_toolbox_for_matlab/docs/franka_matlab/index.html)
+        Release $VERSION of Franka Toolbox for MATLAB.
         EOF
         else
-          echo "Looking for version $VERSION in CHANGELOG.md"
-          sed -n "/^## $VERSION/,/^## [0-9]/p" CHANGELOG.md | sed '$d' > VERSION_CHANGELOG.md
+          echo "Extracting latest changelog entry from CHANGELOG.md"
+          
+          # Extract the first (latest) changelog entry: from first "## " to the next "## " or EOF
+          # This is more robust than matching exact version numbers
+          awk '/^## [0-9]/{if(found) exit; found=1} found{print}' CHANGELOG.md > VERSION_CHANGELOG.md
           
           if [ -s VERSION_CHANGELOG.md ] && [ $(wc -l < VERSION_CHANGELOG.md) -gt 1 ]; then
-            echo "Successfully extracted changelog for version $VERSION"
+            echo "Successfully extracted latest changelog entry:"
+            head -3 VERSION_CHANGELOG.md
           else
+            echo "Could not extract changelog, using fallback"
             cat > VERSION_CHANGELOG.md << EOF
         ## What's New
         
         Release $VERSION of Franka Toolbox for MATLAB.
         EOF
           fi
-          
-          cat > RELEASE_NOTES.md << EOF
+        fi
+        
+        # Build the full release notes
+        cat > RELEASE_NOTES.md << EOF
         $(cat VERSION_CHANGELOG.md)
         
         ## Installation
@@ -607,7 +601,6 @@ jobs:
         - **MEX Platforms**: Linux (R2023a), Windows (R2023a)
         - **Target Architectures**: x86_64, ARM64
         EOF
-        fi
         
         echo "changelog<<EOF" >> $GITHUB_OUTPUT
         cat RELEASE_NOTES.md >> $GITHUB_OUTPUT
