@@ -403,6 +403,18 @@ public:
         }
     }
 
+    // Health check - returns server timestamp and port
+    std::pair<uint64_t, uint16_t> ping() {
+        auto request = rpcInterface.pingRequest();
+        try {
+            auto response = request.send().wait(client.getWaitScope());
+            return {response.getTimestamp(), response.getPort()};
+        } catch (const kj::Exception& e) {
+            std::cerr << "Franka Robot Error: " << e.getDescription().cStr() << std::endl;
+            throw;
+        }
+    }
+
 private:
     capnp::EzRpcClient client;
     RPCService::Client rpcInterface;

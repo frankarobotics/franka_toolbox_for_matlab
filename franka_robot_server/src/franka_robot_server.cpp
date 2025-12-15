@@ -18,7 +18,8 @@ int main(int argc, char* argv[]) {
     int port = std::stoi(argv[2]);
 
     // Initialize the RPC server with the provided IP address and port
-    capnp::EzRpcServer server(kj::heap<FrankaRobotRPCServiceImpl>(), ipAddress, port);
+    // Pass port to service impl for ping response
+    capnp::EzRpcServer server(kj::heap<FrankaRobotRPCServiceImpl>(static_cast<uint16_t>(port)), ipAddress, port);
     
     auto& waitScope = server.getWaitScope();
 

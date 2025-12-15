@@ -129,4 +129,7 @@ interface RPCService {
 
     # Robot control
     stopRobot @24 () -> (success :Bool);
+
+    # Health check - returns server timestamp for liveness verification
+    ping @25 () -> (timestamp :UInt64, port :UInt16);
 }

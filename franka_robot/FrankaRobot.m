@@ -1,4 +1,18 @@
 classdef FrankaRobot < handle
+    %FRANKAROBOT High-level interface to Franka Emika robots
+    %   This class provides a convenient interface for controlling Franka robots,
+    %   including motion control, gripper operations, and settings management.
+    %
+    %   Multiple instances can be created to control different robots simultaneously
+    %   by using different RobotIP and ServerPort combinations.
+    %
+    %   Example (single robot):
+    %       robot = FrankaRobot('RobotIP', '172.16.0.2');
+    %       robot.robot_homing();
+    %
+    %   Example (multiple robots):
+    %       robot1 = FrankaRobot('RobotIP', '172.16.0.2', 'ServerPort', '5001');
+    %       robot2 = FrankaRobot('RobotIP', '172.16.0.3', 'ServerPort', '5002');
     
     properties (Constant, Access = private)
         % Set standard default values for the Remote Server
@@ -29,10 +43,11 @@ classdef FrankaRobot < handle
             % FrankaRobot Constructor
             %
             % Usage:
-            %   robot = FrankaRobot()                          % Local server, default settings
-            %   robot = FrankaRobot('RobotIP', '172.16.0.2')   % Local server, custom robot IP
-            %   robot = FrankaRobot('Settings', mySettings)    % Local server, custom settings
-            %   robot = FrankaRobot('RobotIP', '172.16.0.2', 'Username', 'franka', 'ServerIP', '172.16.1.2', ...)  % Remote server
+            %   robot = FrankaRobot()                                    % Local server, default settings
+            %   robot = FrankaRobot('RobotIP', '172.16.0.2')             % Local server, custom robot IP
+            %   robot = FrankaRobot('ServerPort', '5002')                % Local server on different port
+            %   robot = FrankaRobot('Settings', mySettings)              % Local server, custom settings
+            %   robot = FrankaRobot('RobotIP', '...', 'ServerIP', '...') % Remote server (via SSH)
             %
             % Parameters:
             %   'RobotIP'    - IP address of the Franka robot (default: '172.16.0.2')
@@ -41,29 +56,44 @@ classdef FrankaRobot < handle
             %                  Note: robot_ip is captured at construction and cannot be changed.
             %                  Other settings (collision_thresholds, load_inertia, etc.) can be
             %                  modified at runtime via setCollisionThresholds(), setLoadInertia().
-            %   'Username'   - SSH username for remote server connection (default: 'franka')
-            %   'ServerIP'   - IP address of remote server host (default: '172.16.1.2')
+            %   'ServerPort' - RPC server port (default: '5001'). Use different ports for
+            %                  multiple robot instances.
+            %   'Username'   - SSH username for remote server connection (triggers remote mode)
+            %   'ServerIP'   - IP address of remote server host (triggers remote mode)
             %   'SSHPort'    - SSH port (default: '22')
-            %   'ServerPort' - RPC server port (default: '5001')
+            %
+            % Multi-Instance Support:
+            %   To control multiple robots simultaneously, create separate FrankaRobot
+            %   instances with different 'ServerPort' values:
+            %
+            %   robot1 = FrankaRobot('RobotIP', '172.16.0.2', 'ServerPort', '5001');
+            %   robot2 = FrankaRobot('RobotIP', '172.16.0.3', 'ServerPort', '5002');
             
             % Create input parser
             p = inputParser;
             
             % Robot IP can be provided directly for convenience
-            addParameter(p, 'RobotIP', '', @ischar);
+            addParameter(p, 'RobotIP', '', @(x) ischar(x) || isstring(x));
             
             % Settings can be provided directly - uses FrankaRobotSettings as single source of truth
             addParameter(p, 'Settings', FrankaRobotSettings(), @(x) isa(x, 'FrankaRobotSettings'));
             
             % Server connection parameters
-            addParameter(p, 'Username', obj.DefaultServerUsername, @ischar);
-            addParameter(p, 'ServerIP', obj.DefaultServerIP, @ischar);
-            addParameter(p, 'SSHPort', obj.DefaultSSHPort, @ischar);
-            addParameter(p, 'ServerPort', obj.DefaultServerPort, @ischar);
+            addParameter(p, 'Username', '', @(x) ischar(x) || isstring(x));  % Empty = local mode
+            addParameter(p, 'ServerIP', '', @(x) ischar(x) || isstring(x));  % Empty = local mode
+            addParameter(p, 'SSHPort', obj.DefaultSSHPort, @(x) ischar(x) || isstring(x));
+            addParameter(p, 'ServerPort', obj.DefaultServerPort, @(x) ischar(x) || isstring(x));
             
             % Parse the inputs
             parse(p, varargin{:});
             params = p.Results;
+            
+            % Convert string to char if needed
+            params.RobotIP = char(params.RobotIP);
+            params.Username = char(params.Username);
+            params.ServerIP = char(params.ServerIP);
+            params.SSHPort = char(params.SSHPort);
+            params.ServerPort = char(params.ServerPort);
             
             % Store the Settings object
             obj.Settings = params.Settings;
@@ -75,26 +105,55 @@ classdef FrankaRobot < handle
                 obj.RobotIP = obj.Settings.robot_ip;
             end
             
-            % Initialize server based on parameters
-            if all(strcmp({params.Username, params.ServerIP, params.SSHPort, params.ServerPort}, ...
-                    {obj.DefaultServerUsername, obj.DefaultServerIP, obj.DefaultSSHPort, obj.DefaultServerPort}))
-                % Case 1: All parameters are default values - use local server
-                obj.Server = FrankaRobotServer();
+            % Determine if this is a remote or local server based on ServerIP/Username
+            % Remote mode is triggered by providing ServerIP (the machine to SSH into)
+            isRemoteMode = ~isempty(params.ServerIP);
+            
+            % Initialize server based on mode
+            if isRemoteMode
+                % Remote server via SSH
+                username = params.Username;
+                if isempty(username)
+                    username = obj.DefaultServerUsername;  % Default SSH username
+                end
+                serverIP = params.ServerIP;
+                if isempty(serverIP)
+                    serverIP = obj.DefaultServerIP;
+                end
+                obj.Server = FrankaRobotServer(username, serverIP, params.SSHPort, params.ServerPort);
             else
-                % Case 2: At least one server parameter was specified - use remote server
-                obj.Server = FrankaRobotServer(params.Username, params.ServerIP, ...
-                    params.SSHPort, params.ServerPort);
+                % Local server - create with default constructor, then set port if non-default
+                obj.Server = FrankaRobotServer();
+                if ~strcmp(params.ServerPort, obj.DefaultServerPort)
+                    obj.Server.setServerPort(params.ServerPort);
+                end
             end
 
             try
                 obj.Server.start();
             catch ME
-                ME = MException('FrankaRobot:InitError', 'Failed to start Franka Robot Server: %s', ME.message);
-                throw(ME);
+                newME = MException('FrankaRobot:InitError', 'Failed to start Franka Robot Server: %s', ME.message);
+                throw(newME);
             end
 
             % Create a new Franka Robot handle for the client
             obj.frankaRobotHandle = franka_robot('new', obj.Server.getServerIp(), obj.Server.getServerPort());
+            
+            % Verify server connectivity with ping
+            try
+                obj.ping();
+            catch ME
+                % Clean up on failure
+                if ~isempty(obj.Server)
+                    obj.Server.stop();
+                end
+                if ~isempty(obj.frankaRobotHandle)
+                    franka_robot('delete', obj.frankaRobotHandle);
+                end
+                newME = MException('FrankaRobot:InitError', ...
+                    'Failed to connect to Franka Robot Server: %s', ME.message);
+                throw(newME);
+            end
             
             % Initialize the robot
             try
@@ -107,8 +166,8 @@ classdef FrankaRobot < handle
                 if ~isempty(obj.frankaRobotHandle)
                     franka_robot('delete', obj.frankaRobotHandle);
                 end
-                ME = MException('FrankaRobot:InitError', 'Failed to initialize robot: %s', ME.message);
-                throw(ME);
+                newME = MException('FrankaRobot:InitError', 'Failed to initialize robot: %s', ME.message);
+                throw(newME);
             end
 
             % Create the gripper instance
@@ -360,8 +419,67 @@ classdef FrankaRobot < handle
             if ~isempty(obj.frankaRobotHandle)
                 result = franka_robot('stop_robot', obj.frankaRobotHandle);
             else
-                error('Franka Robot server is not connected. Please check the Server Status.');
+                error('FrankaRobot:NotConnected', ...
+                    'Franka Robot server is not connected. Please check the Server Status.');
             end
+        end
+        
+        %% Health Check Methods
+        function result = ping(obj)
+            % Ping the server to verify connectivity
+            %
+            % Returns:
+            %   result.timestamp - Server timestamp (milliseconds since epoch)
+            %   result.port      - Server port number
+            %
+            % Throws an error if the server is not responding.
+            
+            if ~isempty(obj.frankaRobotHandle)
+                result = franka_robot('ping', obj.frankaRobotHandle);
+            else
+                error('FrankaRobot:NotConnected', ...
+                    'Franka Robot server is not connected. Please check the Server Status.');
+            end
+        end
+        
+        function healthy = isHealthy(obj)
+            % Check if the robot server connection is healthy
+            %
+            % Returns:
+            %   true  - Server is responsive and port matches expected value
+            %   false - Server is not responding or port mismatch
+            %
+            % This performs an actual RPC call, not just a process check.
+            
+            try
+                result = obj.ping();
+                expectedPort = str2double(obj.Server.getServerPort());
+                healthy = ~isempty(result) && result.port == expectedPort;
+            catch
+                healthy = false;
+            end
+        end
+        
+        function s = status(obj)
+            % Get comprehensive status information about the robot and server
+            %
+            % Returns a struct with:
+            %   s.robotIP       - Robot IP address
+            %   s.serverStatus  - Server status struct (from FrankaRobotServer.status())
+            %   s.rpcHealthy    - true if RPC ping succeeds
+            %   s.connected     - true if client handle exists
+            
+            s = struct();
+            s.robotIP = obj.RobotIP;
+            s.connected = ~isempty(obj.frankaRobotHandle);
+            
+            if ~isempty(obj.Server)
+                s.serverStatus = obj.Server.status();
+            else
+                s.serverStatus = struct('running', false);
+            end
+            
+            s.rpcHealthy = obj.isHealthy();
         end
 
         function initialize(obj)

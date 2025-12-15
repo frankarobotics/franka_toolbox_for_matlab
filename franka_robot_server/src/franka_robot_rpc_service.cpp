@@ -3,10 +3,8 @@
 #include <franka/robot.h>
 #include <memory>
 
-FrankaRobotRPCServiceImpl::FrankaRobotRPCServiceImpl() {
-    // Do not initialize robot, model, gripper, or vacuum_gripper here.
-    // Initialization will occur in initializeRobot().
-}
+// Note: Constructor is defaulted or takes port parameter (see header).
+// Robot, model, gripper, and vacuum_gripper are initialized via their respective init methods.
 
 kj::Promise<void> FrankaRobotRPCServiceImpl::initializeRobot(
     capnp::CallContext<InitializeRobotParams, InitializeRobotResults> context) {

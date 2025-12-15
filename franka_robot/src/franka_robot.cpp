@@ -748,6 +748,24 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         return;
     }
 
+    // Ping (health check)
+    if (!strcmp("ping", cmd)) {
+        if (nlhs != 1 || nrhs != 2)
+            mexErrMsgTxt("Ping: One output and one input (handle) expected.");
+        try {
+            auto [timestamp, port] = franka_robot_instance->ping();
+            
+            // Create struct with timestamp and port
+            const char* fieldnames[] = {"timestamp", "port"};
+            plhs[0] = mxCreateStructMatrix(1, 1, 2, fieldnames);
+            mxSetField(plhs[0], 0, "timestamp", mxCreateDoubleScalar(static_cast<double>(timestamp)));
+            mxSetField(plhs[0], 0, "port", mxCreateDoubleScalar(static_cast<double>(port)));
+        } catch (...) {
+            mexErrMsgTxt("Failed to ping server");
+        }
+        return;
+    }
+
     // Got here, so command not recognized
     mexErrMsgTxt("Command not recognized.");
 }

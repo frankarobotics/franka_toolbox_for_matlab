@@ -72,6 +72,7 @@ set(SOURCES
     src/guiding_mode.cpp
     src/frame_transformations.cpp
     src/stop_robot.cpp
+    src/ping.cpp
     ${RPC_SRCS}
     ${RPC_HDRS}
 )
