@@ -71,11 +71,11 @@ function [status, output] = franka_toolbox_ssh_exec(cmd, user, ip, port, options
         fprintf('Executing SSH command:\n  %s\n', cmd);
     end
     
-    % Execute command
+    % Execute command - use evalc to suppress any MATLAB-generated messages
     if verbose
         [status, output] = system(ssh_cmd, '-echo');
     else
-        [status, output] = system(ssh_cmd);
+        evalc('[status, output] = system(ssh_cmd)');
     end
     
     output = strtrim(output);

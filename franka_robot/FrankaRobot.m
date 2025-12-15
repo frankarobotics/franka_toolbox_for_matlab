@@ -259,6 +259,37 @@ classdef FrankaRobot < handle
             end
         end
 
+        function reconnect(obj)
+            % Reconnect to server after it was restarted
+            %
+            % Use this method after calling Server.stop() and Server.start()
+            % to re-establish the RPC connection.
+            
+            % Ensure server is running
+            if ~obj.Server.isRunning()
+                obj.Server.start();
+            end
+            
+            % Delete old handle if exists
+            if ~isempty(obj.frankaRobotHandle)
+                try
+                    franka_robot('delete', obj.frankaRobotHandle);
+                catch
+                    % Ignore errors from stale handle
+                end
+            end
+            
+            % Create new connection
+            obj.frankaRobotHandle = franka_robot('new', obj.Server.getServerIp(), obj.Server.getServerPort());
+            
+            % Reinitialize robot
+            obj.initialize();
+            
+            % Recreate gripper interfaces with new handle
+            obj.Gripper = FrankaGripper(obj.frankaRobotHandle);
+            obj.VacuumGripper = FrankaVacuumGripper(obj.frankaRobotHandle);
+        end
+
         function initialize(obj)
             franka_robot('initialize_robot', obj.frankaRobotHandle, obj.RobotIP);
         end

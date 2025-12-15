@@ -35,6 +35,13 @@ classdef FrankaRobotServer < handle
         end
         
         function start(obj)
+            % Check if already running
+            if obj.isRunning()
+                warning('FrankaRobotServer:AlreadyRunning', ...
+                    'Server already running on port %s', obj.ServerPort);
+                return;
+            end
+            
             % Clean up any orphaned process on same port
             obj.cleanupOrphan();
             
@@ -86,25 +93,29 @@ classdef FrankaRobotServer < handle
         end
         
         function stop(obj)
-            if ~isempty(obj.pid) && obj.isRunning()
+            if obj.isRunning()
+                % Use pgrep + xargs kill (avoids $() which gets expanded locally for SSH)
+                % Use [f] trick so pgrep doesn't match itself
+                pattern = sprintf('[f]ranka_robot_server.*%s', obj.ServerPort);
+                killCmd = sprintf('pgrep -f ''%s'' | xargs kill 2>/dev/null', pattern);
                 if obj.isRemote
-                    obj.ssh(sprintf('kill %d 2>/dev/null', obj.pid));
+                    obj.ssh(killCmd);
                 else
-                    system(sprintf('kill %d 2>/dev/null', obj.pid));
+                    system(killCmd);
                 end
+                pause(0.3);
             end
             obj.cleanup();
         end
         
         function running = isRunning(obj)
-            if isempty(obj.pid)
-                running = false;
-                return;
-            end
+            % Use pgrep to find process by name and port (more robust than PID)
+            % Use [f] trick so pgrep doesn't match itself
+            pattern = sprintf('[f]ranka_robot_server.*%s', obj.ServerPort);
             if obj.isRemote
-                [s, ~] = obj.ssh(sprintf('ps -p %d > /dev/null 2>&1', obj.pid));
+                [s, ~] = obj.ssh(sprintf('pgrep -f ''%s'' > /dev/null 2>&1', pattern));
             else
-                [s, ~] = system(sprintf('ps -p %d > /dev/null 2>&1', obj.pid));
+                [s, ~] = system(sprintf('pgrep -f ''%s'' > /dev/null 2>&1', pattern));
             end
             running = (s == 0);
         end
