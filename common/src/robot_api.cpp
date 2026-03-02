@@ -67,8 +67,6 @@ SimulinkFrankaRobot::SimulinkFrankaRobot(const char * robotIPmask,
     
     robot = std::make_unique<franka::Robot>(robotIPString);
     
-    // Attempt automatic error recovery to clear any previous error state
-    // This ensures the robot is ready for control even if the previous run ended with an error
     try {
         robot->automaticErrorRecovery();
     } catch (const franka::Exception& e) {
@@ -114,8 +112,6 @@ SimulinkFrankaRobot& SimulinkFrankaRobot::operator=(SimulinkFrankaRobot&& otherS
     
     robot = std::make_unique<franka::Robot>(robotIPString);
     
-    // Attempt automatic error recovery to clear any previous error state
-    // This ensures the robot is ready for control even if the previous run ended with an error
     try {
         robot->automaticErrorRecovery();
     } catch (const franka::Exception& e) {
