@@ -348,7 +348,7 @@ jobs:
       with:
         fetch-depth: 0
     
-    - name: Download server artifacts (Gen3 - libfranka 0.18.x)
+    - name: Download server artifacts (Gen3 - libfranka from config)
       uses: actions/download-artifact@v4
       with:
         name: server-binaries
@@ -411,12 +411,25 @@ jobs:
           MATLAB_Coder
           Simulink_Coder
     
+    - name: Read Gen3 libfranka version from config
+      id: libfranka-version
+      run: |
+        GEN3_LIBFRANKA_VERSION=$(sed -n '1p' config/libfranka_ver.csv | tr -d '\r')
+        if [ -z "$GEN3_LIBFRANKA_VERSION" ]; then
+          echo "config/libfranka_ver.csv is empty"
+          exit 1
+        fi
+        echo "GEN3_LIBFRANKA_VERSION=$GEN3_LIBFRANKA_VERSION" >> $GITHUB_ENV
+        echo "gen3_version=$GEN3_LIBFRANKA_VERSION" >> $GITHUB_OUTPUT
+        echo "Using Gen3 libfranka version: $GEN3_LIBFRANKA_VERSION"
+
     - name: Create Gen3 distribution package (franka-fr3.mltbx)
       uses: matlab-actions/run-command@v2
       with:
         command: |
           addpath(genpath(pwd));
-          fprintf('Creating Gen3 distribution package (libfranka 0.18.x)...\n');
+          gen3LibfrankaVersion = getenv('GEN3_LIBFRANKA_VERSION');
+          fprintf('Creating Gen3 distribution package (libfranka %s)...\n', gen3LibfrankaVersion);
           franka_toolbox_dist_make('Mode', 'ci', 'OutputName', 'franka-fr3');
           fprintf('Gen3 distribution package created!\n');
     
@@ -504,6 +517,17 @@ jobs:
           VERSION=${GITHUB_REF#refs/tags/}
           echo "version=$VERSION" >> $GITHUB_OUTPUT
         fi
+
+    - name: Read Gen3 libfranka version from config
+      id: libfranka-version
+      run: |
+        GEN3_LIBFRANKA_VERSION=$(sed -n '1p' config/libfranka_ver.csv | tr -d '\r')
+        if [ -z "$GEN3_LIBFRANKA_VERSION" ]; then
+          echo "config/libfranka_ver.csv is empty"
+          exit 1
+        fi
+        echo "gen3_version=$GEN3_LIBFRANKA_VERSION" >> $GITHUB_OUTPUT
+        echo "Using Gen3 libfranka version: $GEN3_LIBFRANKA_VERSION"
     
     - name: Download distribution artifact
       uses: actions/download-artifact@v4
@@ -579,7 +603,7 @@ jobs:
         
         | Package | Robot | libfranka Version |
         |---------|-------|-------------------|
-        | \`franka-fr3.mltbx\` | FR3 | 0.18.x |
+        | \`franka-fr3.mltbx\` | FR3 | ${{ steps.libfranka-version.outputs.gen3_version }} |
         | \`franka-fer.mltbx\` | FER | 0.9.2 |
 
         To install, either:
@@ -594,7 +618,7 @@ jobs:
         
         | Package | Size | libfranka |
         |---------|------|-----------|
-        | franka-fr3.mltbx | ${{ steps.check-dist.outputs.gen3_size }} | 0.18.x |
+        | franka-fr3.mltbx | ${{ steps.check-dist.outputs.gen3_size }} | ${{ steps.libfranka-version.outputs.gen3_version }} |
         | franka-fer.mltbx | ${{ steps.check-dist.outputs.gen1_size }} | 0.9.2 |
         
         - **Version**: $VERSION
