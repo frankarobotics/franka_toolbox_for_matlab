@@ -53,6 +53,9 @@ The toolbox includes ready-to-run examples:
 
 ## Building from Source
 
+The released `.mltbx` packages include pre-built binaries for the default supported setup. If you need a different `libfranka` version, you can build with Docker via `docker/build.sh --libfranka <version>`.
+You can also choose `docker/build.sh amd64` for a local host target or `docker/build.sh arm64` for a Jetson target instead of building both architectures.
+
 If you need to build the toolbox yourself, see the [Custom Build Guide](https://frankarobotics.github.io/docs/franka_toolbox_for_matlab/docs/franka_matlab/custom_build.html) in the documentation.
 
 ## License

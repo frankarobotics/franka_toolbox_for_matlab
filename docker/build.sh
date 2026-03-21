@@ -263,3 +263,17 @@ fi
 
 log_success "All builds completed successfully!"
 
+echo ""
+log_info "Next steps:"
+echo "  1. Start MATLAB in the project root."
+echo "  2. Build the MATLAB MEX artifacts:"
+echo "     franka_robot_mex()"
+echo "     franka_simulink_library_mex()"
+echo "  3. Run the toolbox installer:"
+echo "     franka_toolbox_install()"
+echo ""
+log_info "Documentation:"
+echo "  - Official documentation: https://frankarobotics.github.io/docs/franka_toolbox_for_matlab/docs/franka_matlab/index.html"
+echo "  - Custom Build guide: https://frankarobotics.github.io/docs/franka_toolbox_for_matlab/docs/franka_matlab/custom_build.html"
+echo "  - Repository overview: ${PROJECT_ROOT}/README.md"
+

@@ -15,6 +15,8 @@ Building Server Binaries (Docker)
 ---------------------------------
 
 Server binaries are built using Docker, which handles all dependencies automatically.
+If you need a specific ``libfranka`` version instead of the one used for the pre-built release packages, build with ``./build.sh --libfranka <version>`` from the ``docker/`` directory.
+You can also build only ``amd64`` for a local host target or only ``arm64`` when targeting Jetson, instead of building both architectures.
 
 **Requirements:** Docker installed and running
 

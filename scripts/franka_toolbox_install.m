@@ -16,6 +16,13 @@ function franka_toolbox_install()
         % Remove any existing installation
         franka_toolbox_uninstall();
 
+        if ~hasRequiredBinaries()
+            warning('franka_toolbox_install:MissingBinaries', '%s', ...
+                    getMissingBinariesWarningMessage());
+            fprintf('\nFranka Toolbox installation unsuccessful\n\n');
+            return;
+        end
+
         % Extract binary files
         unpackBinaries();
 
@@ -42,47 +49,89 @@ function franka_toolbox_install()
         tryUnzip(fullfile(installation_path, 'common', 'bin.zip'), ...
                  fullfile(installation_path, 'common'));
         tryUnzip(fullfile(installation_path, 'common', 'bin_arm.zip'), ...
-                 fullfile(installation_path, 'common'));
+                 fullfile(installation_path, 'common'), false);
         
         % Unpack MATLAB library binaries
         matlab_robot_server_path = fullfile(installation_path, 'franka_robot_server');
         tryUntar(fullfile(matlab_robot_server_path, 'bin.tar.gz'), matlab_robot_server_path);
-        tryUntar(fullfile(matlab_robot_server_path, 'bin_arm.tar.gz'), matlab_robot_server_path);
+        tryUntar(fullfile(matlab_robot_server_path, 'bin_arm.tar.gz'), matlab_robot_server_path, false);
         
         matlab_lib_path = fullfile(installation_path, 'franka_robot');
         tryUnzip(fullfile(matlab_lib_path, 'bin.zip'), matlab_lib_path);
-        addpath(fullfile(matlab_lib_path, 'bin'));
+        matlab_bin_path = fullfile(matlab_lib_path, 'bin');
+        if ~isfolder(matlab_bin_path)
+            error('Required MATLAB binaries could not be unpacked from: %s', ...
+                  fullfile(matlab_lib_path, 'bin.zip'));
+        end
+        addpath(matlab_bin_path);
         
         % Unpack dependencies
         deps_path = fullfile(installation_path, 'dependencies');
         tryUnzip(fullfile(deps_path, 'libfranka.zip'), installation_path);
-        tryUnzip(fullfile(deps_path, 'libfranka_arm.zip'), installation_path);
+        tryUnzip(fullfile(deps_path, 'libfranka_arm.zip'), installation_path, false);
     end
 
-    function tryUnzip(archivePath, destPath)
-        % Attempts to unzip an archive, shows warning if file not found
+    function tryUnzip(archivePath, destPath, warnIfMissing)
+        % Attempts to unzip an archive, optionally warns if file not found
+        if nargin < 3
+            warnIfMissing = true;
+        end
+
         if ~isfile(archivePath)
-            warning('Archive not found, skipping: %s', archivePath);
+            if warnIfMissing
+                warning('Archive not found, skipping: %s', archivePath);
+            end
             return;
         end
         try
             unzip(archivePath, destPath);
         catch ME
-            warning('Failed to unzip %s: %s', archivePath, ME.message);
+            error('Failed to unzip %s: %s', archivePath, ME.message);
         end
     end
 
-    function tryUntar(archivePath, destPath)
-        % Attempts to untar an archive, shows warning if file not found
+    function tryUntar(archivePath, destPath, warnIfMissing)
+        % Attempts to untar an archive, optionally warns if file not found
+        if nargin < 3
+            warnIfMissing = true;
+        end
+
         if ~isfile(archivePath)
-            warning('Archive not found, skipping: %s', archivePath);
+            if warnIfMissing
+                warning('Archive not found, skipping: %s', archivePath);
+            end
             return;
         end
         try
             untar(archivePath, destPath);
         catch ME
-            warning('Failed to untar %s: %s', archivePath, ME.message);
+            error('Failed to untar %s: %s', archivePath, ME.message);
         end
+    end
+
+    function tf = hasRequiredBinaries()
+        tf = isempty(getMissingRequiredBinaries());
+    end
+
+    function missingArchives = getMissingRequiredBinaries()
+        installation_path = franka_toolbox_installation_path_get();
+        requiredArchives = { ...
+            fullfile(installation_path, 'franka_simulink_library', 'bin.zip'), ...
+            fullfile(installation_path, 'common', 'bin.zip'), ...
+            fullfile(installation_path, 'franka_robot_server', 'bin.tar.gz'), ...
+            fullfile(installation_path, 'franka_robot', 'bin.zip'), ...
+            fullfile(installation_path, 'dependencies', 'libfranka.zip') ...
+        };
+        missingMask = ~cellfun(@isfile, requiredArchives);
+        missingArchives = requiredArchives(missingMask);
+    end
+
+    function message = getMissingBinariesWarningMessage()
+        message = sprintf([ ...
+            'Binaries were not found. The Toolbox won''t function. Please\n\n' ...
+            '1. In case the official mtlbx release has been installed and the source code has been cloned please make sure that the source code is not found in path.\n' ...
+            '2. If you''ve cloned the source code please make sure you''ve build the binaries before the installation with ./build --libfranka x version' ...
+        ]);
     end
 
     function configureSimulink()

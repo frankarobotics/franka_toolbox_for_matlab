@@ -61,13 +61,13 @@ ENV CMAKE_PREFIX_PATH="/usr/local:/opt/sysroot-aarch64/usr:/usr/aarch64-linux-gn
 
 # 3. Cross-compile hpp-fcl for ARM64 (Required by Pinocchio)
 # Note: hpp-fcl's cmake config does nested find_package calls that can fail version checks
-# We patch the installed Config.cmake to fix cross-compilation version detection issues
-RUN git clone https://github.com/humanoid-path-planner/hpp-fcl.git /opt/hpp-fcl && \
-    cd /opt/hpp-fcl && \
-    git checkout v2.4.5 && \
-    git submodule update --init && \
-    mkdir build && cd build && \
-    cmake .. \
+# We split clone/configure/build/install into separate layers so Docker logs show
+# which stage is slow or failing and retries can reuse earlier cached layers.
+ARG HPP_FCL_VERSION=v2.4.5
+RUN git clone --branch "${HPP_FCL_VERSION}" --depth 1 \
+    https://github.com/humanoid-path-planner/hpp-fcl.git /opt/hpp-fcl
+RUN cd /opt/hpp-fcl && git submodule update --init --depth 1
+RUN cmake -S /opt/hpp-fcl -B /opt/hpp-fcl/build \
         -DCMAKE_SYSTEM_NAME=Linux \
         -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
         -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
@@ -77,9 +77,9 @@ RUN git clone https://github.com/humanoid-path-planner/hpp-fcl.git /opt/hpp-fcl 
         -DCMAKE_BUILD_TYPE=Release \
         -DBUILD_PYTHON_INTERFACE=OFF \
         -DBUILD_TESTING=OFF \
-        -DGENERATE_VERSION_HEADER=ON && \
-    make -j$(nproc) && make install && \
-    cd / && rm -rf /opt/hpp-fcl
+        -DGENERATE_VERSION_HEADER=ON
+RUN cmake --build /opt/hpp-fcl/build -j"$(nproc)"
+RUN cmake --install /opt/hpp-fcl/build && rm -rf /opt/hpp-fcl
 
 # 4. Cross-compile Pinocchio for ARM64
 # Pinocchio is not in standard Ubuntu repos, so we build it.
