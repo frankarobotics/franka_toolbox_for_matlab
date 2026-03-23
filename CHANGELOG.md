@@ -1,6 +1,6 @@
 # Changelog:
 
-## 4.0.0 (16-10-2025)
+## 4.0.0 (30-03-2026)
 
    - New auto-build system for franka.mtlbx under github release page. 
    - Latest libfranka build for fr3.
