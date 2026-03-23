@@ -1,12 +1,12 @@
 function franka_toolbox_dist_make(options)
     %FRANKA_TOOLBOX_DIST_MAKE Create distribution package for Franka Toolbox
     %
-    %   franka_toolbox_dist_make() - Full build with git clean (for local dev)
-    %   franka_toolbox_dist_make('Mode', 'ci') - CI mode: skip git clean (for GitHub Actions)
+    %   franka_toolbox_dist_make() - CI-safe packaging mode: preserve generated artifacts
+    %   franka_toolbox_dist_make('Mode', 'local') - Local packaging with git clean
     %   franka_toolbox_dist_make('Mode', 'ci', 'OutputName', 'franka') - Specify output name
     %
     %   Options:
-    %     Mode       - 'local' (default) or 'ci'
+    %     Mode       - 'ci' (default) or 'local'
     %     OutputName - Base name for output file (default: 'franka')
     %                  Output will be: dist/<OutputName>.mltbx
     %
@@ -15,7 +15,7 @@ function franka_toolbox_dist_make(options)
     %   'LICENSE' , which is part of this package
     
     arguments
-        options.Mode {mustBeMember(options.Mode, {'local', 'ci'})} = 'local'
+        options.Mode {mustBeMember(options.Mode, {'local', 'ci'})} = 'ci'
         options.OutputName {mustBeTextScalar} = 'franka'
     end
     

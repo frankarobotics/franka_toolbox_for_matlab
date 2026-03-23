@@ -97,12 +97,21 @@ After building both server binaries and MEX files:
 
     franka_toolbox_dist_make();
 
+By default, ``franka_toolbox_dist_make()`` now uses the CI-safe packaging behavior and preserves the generated server and MEX archives in your working tree.
 This creates ``dist/franka.mltbx`` by default. You can also specify the output name:
 
 .. code-block:: matlab
 
     franka_toolbox_dist_make('OutputName', 'franka-fr3'); % For FR3
     franka_toolbox_dist_make('OutputName', 'franka-fer'); % For FER
+
+If you explicitly want the old local cleanup behavior, you can run:
+
+.. code-block:: matlab
+
+    franka_toolbox_dist_make('Mode', 'local');
+
+``Mode='local'`` runs ``git clean -ffxd`` before packaging. This removes untracked generated artifacts from the repository checkout, including locally built archives that have not been committed.
 
 CI/CD Reference
 ---------------
