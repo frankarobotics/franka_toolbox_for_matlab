@@ -16,9 +16,10 @@ function franka_toolbox_install()
         % Remove any existing installation
         franka_toolbox_uninstall();
 
-        if ~hasRequiredBinaries()
+        missingArchives = getMissingRequiredBinaries();
+        if ~isempty(missingArchives)
             warning('franka_toolbox_install:MissingBinaries', '%s', ...
-                    getMissingBinariesWarningMessage());
+                    getMissingBinariesWarningMessage(missingArchives));
             fprintf('\nFranka Toolbox installation unsuccessful\n\n');
             return;
         end
@@ -109,10 +110,6 @@ function franka_toolbox_install()
         end
     end
 
-    function tf = hasRequiredBinaries()
-        tf = isempty(getMissingRequiredBinaries());
-    end
-
     function missingArchives = getMissingRequiredBinaries()
         installation_path = franka_toolbox_installation_path_get();
         requiredArchives = { ...
@@ -126,12 +123,20 @@ function franka_toolbox_install()
         missingArchives = requiredArchives(missingMask);
     end
 
-    function message = getMissingBinariesWarningMessage()
+    function message = getMissingBinariesWarningMessage(missingArchives)
+        installation_path = franka_toolbox_installation_path_get();
+        relativeMissingArchives = cellfun( ...
+            @(path) strrep(path, [installation_path filesep], ''), ...
+            missingArchives, 'UniformOutput', false);
+        missingList = sprintf(' - %s\n', relativeMissingArchives{:});
+
         message = sprintf([ ...
-            'Binaries were not found. The Toolbox won''t function. Please\n\n' ...
+            'One or more binaries were not found. The Toolbox won''t function partially or at all.\n\n' ...
+            'Missing required archives:\n%s\n' ...
+            'Please\n\n' ...
             '1. In case the official mtlbx release has been installed and the source code has been cloned please make sure that the source code is not found in path.\n' ...
-            '2. If you''ve cloned the source code please make sure you''ve build the binaries before the installation with ./build --libfranka x version' ...
-        ]);
+            '2. If you''ve cloned the source code please make sure you''ve built the binaries before the installation with ./build.sh --libfranka <version>, and then run franka_robot_mex() and franka_simulink_library_mex().' ...
+        ], missingList);
     end
 
     function configureSimulink()
