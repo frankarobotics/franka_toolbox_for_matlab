@@ -43,6 +43,28 @@ log_header() {
     echo -e "${CYAN}=====================================================${NC}"
 }
 
+print_dir_listing() {
+    local dir_path="$1"
+    local label="$2"
+
+    echo "  ${label}: ${dir_path}"
+    if [[ -d "${dir_path}" ]]; then
+        ls -la "${dir_path}" || true
+    else
+        echo "    (directory not found)"
+    fi
+}
+
+require_file() {
+    local file_path="$1"
+    local description="$2"
+
+    if [[ ! -f "${file_path}" ]]; then
+        log_error "Missing ${description}: ${file_path}"
+        return 1
+    fi
+}
+
 show_help() {
     echo "Franka Toolbox Docker Build System"
     echo ""
@@ -199,20 +221,69 @@ build_for_arch() {
     log_info "Copying build artifacts..."
     
     if [[ "$arch" == "amd64" ]]; then
-        [[ -f "${container_output}/bin.zip" ]] && \
-            cp "${container_output}/bin.zip" "${PROJECT_ROOT}/common/"
-        [[ -f "${container_output}/bin.tar.gz" ]] && \
-            cp "${container_output}/bin.tar.gz" "${PROJECT_ROOT}/franka_robot_server/"
-        [[ -f "${container_output}/libfranka.zip" ]] && \
-            cp "${container_output}/libfranka.zip" "${PROJECT_ROOT}/dependencies/"
+        local expected_output_paths=(
+            "${container_output}/bin.zip"
+            "${container_output}/bin.tar.gz"
+            "${container_output}/libfranka.zip"
+        )
+        local expected_output_labels=(
+            "x86_64 common archive"
+            "x86_64 server archive"
+            "x86_64 libfranka archive"
+        )
+        local project_output_paths=(
+            "${PROJECT_ROOT}/common/bin.zip"
+            "${PROJECT_ROOT}/franka_robot_server/bin.tar.gz"
+            "${PROJECT_ROOT}/dependencies/libfranka.zip"
+        )
+
     else
-        [[ -f "${container_output}/bin_arm.zip" ]] && \
-            cp "${container_output}/bin_arm.zip" "${PROJECT_ROOT}/common/"
-        [[ -f "${container_output}/bin_arm.tar.gz" ]] && \
-            cp "${container_output}/bin_arm.tar.gz" "${PROJECT_ROOT}/franka_robot_server/"
-        [[ -f "${container_output}/libfranka_arm.zip" ]] && \
-            cp "${container_output}/libfranka_arm.zip" "${PROJECT_ROOT}/dependencies/"
+        local expected_output_paths=(
+            "${container_output}/bin_arm.zip"
+            "${container_output}/bin_arm.tar.gz"
+            "${container_output}/libfranka_arm.zip"
+        )
+        local expected_output_labels=(
+            "ARM64 common archive"
+            "ARM64 server archive"
+            "ARM64 libfranka archive"
+        )
+        local project_output_paths=(
+            "${PROJECT_ROOT}/common/bin_arm.zip"
+            "${PROJECT_ROOT}/franka_robot_server/bin_arm.tar.gz"
+            "${PROJECT_ROOT}/dependencies/libfranka_arm.zip"
+        )
     fi
+
+    local idx
+    for idx in "${!expected_output_paths[@]}"; do
+        if ! require_file "${expected_output_paths[$idx]}" "${expected_output_labels[$idx]}"; then
+            log_error "Docker build completed without exporting all expected ${arch} archives."
+            print_dir_listing "${container_output}" "Container output directory"
+            exit 1
+        fi
+    done
+
+    if [[ "$arch" == "amd64" ]]; then
+        cp "${container_output}/bin.zip" "${PROJECT_ROOT}/common/"
+        cp "${container_output}/bin.tar.gz" "${PROJECT_ROOT}/franka_robot_server/"
+        cp "${container_output}/libfranka.zip" "${PROJECT_ROOT}/dependencies/"
+    else
+        cp "${container_output}/bin_arm.zip" "${PROJECT_ROOT}/common/"
+        cp "${container_output}/bin_arm.tar.gz" "${PROJECT_ROOT}/franka_robot_server/"
+        cp "${container_output}/libfranka_arm.zip" "${PROJECT_ROOT}/dependencies/"
+    fi
+
+    for idx in "${!project_output_paths[@]}"; do
+        if ! require_file "${project_output_paths[$idx]}" "${expected_output_labels[$idx]} in project root"; then
+            log_error "Artifact copy failed for ${arch}."
+            print_dir_listing "${container_output}" "Container output directory"
+            print_dir_listing "${PROJECT_ROOT}/common" "Project common directory"
+            print_dir_listing "${PROJECT_ROOT}/franka_robot_server" "Project server directory"
+            print_dir_listing "${PROJECT_ROOT}/dependencies" "Project dependencies directory"
+            exit 1
+        fi
+    done
     
     # Cleanup
     rm -rf "${container_output}"
