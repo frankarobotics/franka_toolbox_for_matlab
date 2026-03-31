@@ -34,23 +34,27 @@ function wontdo = franka_toolbox_libfranka_remote_build(user,ip,port,libfranka_v
         franka_toolbox_libfranka_build(libfranka_version,true,true,'libfranka_arm');
         
         fprintf('Cleaning remote libfranka directory...\n');
-        franka_toolbox_remote_system_cmd('rm -rf libfranka','~',user,ip,port,true);
+        sshOpts = struct('verbose', true, 'nothrow', false);
+        franka_toolbox_ssh_exec('rm -rf ~/libfranka', user, ip, port, sshOpts);
         
         fprintf('Copying libfranka to remote machine...\n');
-        franka_toolbox_foder_remote_cp(['"',libfranka_path,'"'],user,ip,'~/libfranka',port,true);
+        scpOpts = struct('recursive', true, 'verbose', true, 'nothrow', false);
+        franka_toolbox_scp(libfranka_path, ':~/libfranka', user, ip, port, scpOpts);
         
         fprintf('Running CMake configuration on remote machine...\n');
-        franka_toolbox_remote_system_cmd('cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF -DCMAKE_PREFIX_PATH="/opt/openrobots/lib/cmake" ..','~/libfranka/build',user,ip,port,true);
+        cmake_cmd = 'cd ~/libfranka/build && cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF -DCMAKE_PREFIX_PATH="/opt/openrobots/lib/cmake" ..';
+        franka_toolbox_ssh_exec(cmake_cmd, user, ip, port, sshOpts);
         
         fprintf('Building libfranka on remote machine...\n');
-        franka_toolbox_remote_system_cmd('cmake --build .','~/libfranka/build',user,ip,port,true);
+        franka_toolbox_ssh_exec('cd ~/libfranka/build && cmake --build .', user, ip, port, sshOpts);
         
         fprintf('Cleaning up local libfranka_arm directory...\n');
         rmdir(libfranka_path,'s');
     end
 
     fprintf('Copying built libfranka from remote machine...\n');
-    franka_toolbox_foder_from_remote_cp(fullfile('~','libfranka'),['"',libfranka_path,'"'],user,ip,port,true);
+    scpOpts = struct('recursive', true, 'verbose', true, 'nothrow', false);
+    franka_toolbox_scp(':~/libfranka', libfranka_path, user, ip, port, scpOpts);
 
     fprintf('Bundling libfranka runtime dependencies...\n');
     franka_toolbox_libfranka_deps_bundle(user,ip,port);

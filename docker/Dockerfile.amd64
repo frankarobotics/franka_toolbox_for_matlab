@@ -1,0 +1,97 @@
+# Dockerfile for building Franka Toolbox target binaries (x86_64/amd64)
+# Ubuntu 22.04 base with all necessary build dependencies
+
+FROM ubuntu:22.04 AS builder
+
+# Avoid interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    git \
+    wget \
+    curl \
+    pkg-config \
+    libtool \
+    autoconf \
+    fuse \
+    file \
+    patchelf \
+    zip \
+    # libfranka dependencies
+    libpoco-dev \
+    libeigen3-dev \
+    libnlopt-dev \
+    libccd-dev \
+    libfcl-dev \
+    liburdfdom-dev \
+    liburdfdom-headers-dev \
+    liboctomap-dev \
+    libboost-all-dev \
+    libtinyxml2-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Build and install Pinocchio 3.4.0 (required by libfranka)
+# Only clone the cmake submodule, skip robot-data which is huge and unnecessary
+RUN git clone https://github.com/stack-of-tasks/pinocchio /opt/pinocchio && \
+    cd /opt/pinocchio && \
+    git checkout v3.4.0 && \
+    git submodule update --init cmake && \
+    mkdir build && \
+    cd build && \
+    cmake .. \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr/local \
+        -DBUILD_PYTHON_INTERFACE=OFF \
+        -DBUILD_TESTING=OFF \
+        -DBUILD_WITH_COLLISION_SUPPORT=OFF \
+        -DBUILD_WITH_AUTODIFF_SUPPORT=OFF \
+        -DBUILD_WITH_CASADI_SUPPORT=OFF \
+        -DBUILD_WITH_CODEGEN_SUPPORT=OFF && \
+    make -j$(nproc) && \
+    make install && \
+    cd / && \
+    rm -rf /opt/pinocchio && \
+    ldconfig
+
+# Set environment variables for pinocchio
+ENV PATH=/usr/local/bin:${PATH}
+ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:${PKG_CONFIG_PATH}
+ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
+ENV CMAKE_PREFIX_PATH=/usr/local:${CMAKE_PREFIX_PATH}
+
+# Build and install Cap'n Proto (static library)
+ARG CAPNP_VERSION=1.1.0
+RUN curl -O https://capnproto.org/capnproto-c++-${CAPNP_VERSION}.tar.gz && \
+    tar zxf capnproto-c++-${CAPNP_VERSION}.tar.gz && \
+    cd capnproto-c++-${CAPNP_VERSION} && \
+    mkdir build && \
+    cd build && \
+    cmake -DBUILD_TESTING=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON .. && \
+    make -j$(nproc) && \
+    make install && \
+    cd ../.. && \
+    rm -rf capnproto-c++-${CAPNP_VERSION}* && \
+    ldconfig
+
+# Download linuxdeploy for bundling dependencies
+RUN mkdir -p /opt/tools && \
+    wget -q -O /opt/tools/linuxdeploy-x86_64.AppImage \
+    https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20250213-2/linuxdeploy-x86_64.AppImage && \
+    chmod +x /opt/tools/linuxdeploy-x86_64.AppImage && \
+    cd /opt/tools && ./linuxdeploy-x86_64.AppImage --appimage-extract && \
+    mv squashfs-root linuxdeploy
+
+# Set working directory
+WORKDIR /workspace
+
+# Copy build scripts
+COPY docker/scripts/ /scripts/
+RUN chmod +x /scripts/*.sh
+
+# Default command
+ENTRYPOINT ["/scripts/entrypoint.sh"]
+CMD ["all"]

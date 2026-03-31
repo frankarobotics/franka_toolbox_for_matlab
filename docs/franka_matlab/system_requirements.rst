@@ -49,7 +49,7 @@ given that the Target PC is running a supported version of Ubuntu as defined bel
 +-------------------------+---------------------------------------------+----------------------------------------------+
 | Franka Toolbox Version  | AI Companion/Jetson Orin Platform           |  Real-Time kernel Linux Host PC as Target PC |
 +=========================+=============================================+==============================================+
-| 3.0.0                   | Ubuntu 22.04 LTS                            |  Ubuntu 22.04 LTS                            |
+| 4.0.0                   | Ubuntu 22.04 LTS                            | :math:`\geq` Ubuntu 22.04 LTS                |
 +-------------------------+---------------------------------------------+----------------------------------------------+
 
 .. warning::

@@ -8,11 +8,22 @@ FrankaRobot Class
 
 The ``FrankaRobot`` constructor initializes a connection to the Franka robot. It can be configured for two primary scenarios: connecting to a robot on a local network (Host PC) or connecting to a robot via an external AI companion computer like a Jetson.
 
+Multiple ``FrankaRobot`` instances can be created simultaneously, each managing its own server lifecycle independently.
+
 **Local Host PC as Target PC**
 
 .. code-block:: matlab
 
+    fr = FrankaRobot();  % Uses default robot IP (172.16.0.2)
+
+    % Or with custom robot IP
     fr = FrankaRobot('RobotIP', '172.16.0.2');
+
+    % Or with a full settings object for advanced configuration
+    settings = FrankaRobotSettings();
+    settings.robot_ip = '172.16.0.2';
+    settings.home_configuration = [0, -pi/4, 0, -3*pi/4, 0, pi/2, pi/4];
+    fr = FrankaRobot('Settings', settings);
 
 **Connecting via AI Companion/NVIDIA Jetson**
 
@@ -30,10 +41,21 @@ When using an external Target PC to control the robot, you must provide connecti
                      'Username', 'jetson_user', ...
                      'ServerIP', '192.168.1.100');
 
+    % Or with custom settings object
+    settings = FrankaRobotSettings();
+    settings.home_configuration = [0, -pi/4, 0, -3*pi/4, 0, pi/2, pi/4];
+    fr = FrankaRobot('RobotIP', '172.16.0.2', ...
+                     'Settings', settings, ...
+                     'Username', 'jetson_user', ...
+                     'ServerIP', '192.168.1.100');
+
 All constructor parameters are optional and have default values.
 
 Parameters:
-    - RobotIP: IP address of the Franka robot (default: '172.16.0.2')
+    - RobotIP: IP address of the Franka robot (default: '172.16.0.2').
+      Overrides ``Settings.robot_ip`` if both are provided.
+    - Settings: ``FrankaRobotSettings`` object containing robot configuration (optional).
+      Other settings like ``collision_thresholds`` and ``load_inertia`` can be modified at runtime.
     - Username: Username for the server on the AI companion (default: 'franka')
     - ServerIP: IP address of the server on the AI companion (default: '172.16.1.2')
     - SSHPort: SSH port for server connection (default: '22')
@@ -106,7 +128,7 @@ Collision Thresholds
 Sets or gets the collision thresholds for the robot.
 
 Parameters:
-    - thresholds: Struct containing collision threshold parameters
+    - thresholds: ``FrankaRobotCollisionThresholds`` object
 
 Load Inertia
 ^^^^^^^^^^^^
@@ -119,7 +141,7 @@ Load Inertia
 Sets or gets the load inertia parameters for the robot.
 
 Parameters:
-    - loadInertia: Struct containing mass, center of mass, and inertia matrix
+    - loadInertia: ``FrankaRobotLoadInertia`` object (mass, center_of_mass, inertia_matrix)
 
 Robot Homing
 ^^^^^^^^^^^^
@@ -140,7 +162,88 @@ Reset Settings
 
     fr.resetSettings();
 
-Resets all robot settings to their default values.
+Resets all robot settings to their default values and applies them to the robot.
+
+Joint Impedance
+^^^^^^^^^^^^^^^
+
+.. code-block:: matlab
+
+    fr.setJointImpedance(K_theta);
+    fr.setJointImpedance();  % Uses Settings.joint_impedance_stiffness
+    K_theta = fr.getJointImpedance();
+
+Sets or gets the impedance for each joint in the internal controller.
+The value is stored in ``Settings.joint_impedance_stiffness``.
+
+Parameters:
+    - K_theta: 7-element array of joint stiffness values [Nm/rad]
+
+Default values: ``[3000, 3000, 3000, 2500, 2500, 2000, 2000]``
+
+Cartesian Impedance
+^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: matlab
+
+    fr.setCartesianImpedance(K_x);
+    fr.setCartesianImpedance();  % Uses Settings.cartesian_impedance_stiffness
+    K_x = fr.getCartesianImpedance();
+
+Sets or gets the Cartesian stiffness/compliance in the internal controller.
+The value is stored in ``Settings.cartesian_impedance_stiffness``.
+
+Parameters:
+    - K_x: 6-element array for (x, y, z, roll, pitch, yaw) stiffness
+      [N/m, N/m, N/m, Nm/rad, Nm/rad, Nm/rad]
+
+Default values: ``[3000, 3000, 3000, 300, 300, 300]``
+
+End Effector Frame (NE_T_EE)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: matlab
+
+    fr.setEE(NE_T_EE);
+    fr.setEE();  % Uses Settings.NE_T_EE
+    NE_T_EE = fr.getEE();
+
+Sets or gets the transformation from nominal end effector to end effector frame.
+The value is stored in ``Settings.NE_T_EE``.
+
+Parameters:
+    - NE_T_EE: 4x4 homogeneous transformation matrix
+
+Default: Identity matrix (eye(4))
+
+Stiffness Frame (EE_T_K)
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: matlab
+
+    fr.setK(EE_T_K);
+    fr.setK();  % Uses Settings.EE_T_K
+    EE_T_K = fr.getK();
+
+Sets or gets the transformation from end effector frame to stiffness frame.
+The value is stored in ``Settings.EE_T_K``.
+
+Parameters:
+    - EE_T_K: 4x4 homogeneous transformation matrix
+
+Default: Identity matrix (eye(4))
+
+Stop Robot
+^^^^^^^^^^
+
+.. code-block:: matlab
+
+    result = fr.stop();
+
+Stops all currently running motions on the robot.
+
+Returns:
+    - true if successful, false otherwise
 
 Gripper Control
 ^^^^^^^^^^^^^^^

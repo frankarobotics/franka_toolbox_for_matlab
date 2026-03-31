@@ -307,6 +307,96 @@ public:
         }
     }
 
+    // Impedance control
+    bool setJointImpedance(const std::array<double, 7>& K_theta) {
+        auto request = rpcInterface.setJointImpedanceRequest();
+        auto k_theta = request.initKTheta(7);
+        for (size_t i = 0; i < 7; i++) {
+            k_theta.set(i, K_theta[i]);
+        }
+
+        try {
+            auto response = request.send().wait(client.getWaitScope());
+            return response.getSuccess();
+        } catch (const kj::Exception& e) {
+            std::cerr << "Franka Robot Error: " << e.getDescription().cStr() << std::endl;
+            throw;
+        }
+    }
+
+    bool setCartesianImpedance(const std::array<double, 6>& K_x) {
+        auto request = rpcInterface.setCartesianImpedanceRequest();
+        auto k_x = request.initKX(6);
+        for (size_t i = 0; i < 6; i++) {
+            k_x.set(i, K_x[i]);
+        }
+
+        try {
+            auto response = request.send().wait(client.getWaitScope());
+            return response.getSuccess();
+        } catch (const kj::Exception& e) {
+            std::cerr << "Franka Robot Error: " << e.getDescription().cStr() << std::endl;
+            throw;
+        }
+    }
+
+    // Frame transformations
+    bool setK(const std::array<double, 16>& EE_T_K) {
+        auto request = rpcInterface.setKRequest();
+        auto ee_t_k = request.initEeTK(16);
+        for (size_t i = 0; i < 16; i++) {
+            ee_t_k.set(i, EE_T_K[i]);
+        }
+
+        try {
+            auto response = request.send().wait(client.getWaitScope());
+            return response.getSuccess();
+        } catch (const kj::Exception& e) {
+            std::cerr << "Franka Robot Error: " << e.getDescription().cStr() << std::endl;
+            throw;
+        }
+    }
+
+    bool setEE(const std::array<double, 16>& NE_T_EE) {
+        auto request = rpcInterface.setEERequest();
+        auto ne_t_ee = request.initNeTEe(16);
+        for (size_t i = 0; i < 16; i++) {
+            ne_t_ee.set(i, NE_T_EE[i]);
+        }
+
+        try {
+            auto response = request.send().wait(client.getWaitScope());
+            return response.getSuccess();
+        } catch (const kj::Exception& e) {
+            std::cerr << "Franka Robot Error: " << e.getDescription().cStr() << std::endl;
+            throw;
+        }
+    }
+
+    // Robot control
+    bool stopRobot() {
+        auto request = rpcInterface.stopRobotRequest();
+        try {
+            auto response = request.send().wait(client.getWaitScope());
+            return response.getSuccess();
+        } catch (const kj::Exception& e) {
+            std::cerr << "Franka Robot Error: " << e.getDescription().cStr() << std::endl;
+            throw;
+        }
+    }
+
+    // Health check - returns server timestamp and port
+    std::pair<uint64_t, uint16_t> ping() {
+        auto request = rpcInterface.pingRequest();
+        try {
+            auto response = request.send().wait(client.getWaitScope());
+            return {response.getTimestamp(), response.getPort()};
+        } catch (const kj::Exception& e) {
+            std::cerr << "Franka Robot Error: " << e.getDescription().cStr() << std::endl;
+            throw;
+        }
+    }
+
 private:
     capnp::EzRpcClient client;
     RPCService::Client rpcInterface;

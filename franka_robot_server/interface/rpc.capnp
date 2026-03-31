@@ -115,4 +115,18 @@ interface RPCService {
     vacuumGripperVacuum @14 (controlPoint :UInt8, timeout :UInt32, profile :UInt8) -> (success :Bool);
     vacuumGripperDropOff @15 (timeout :UInt32) -> (success :Bool);
     vacuumGripperStop @16 () -> (success :Bool);
+
+    # Impedance control
+    setJointImpedance @19 (kTheta :List(Float64)) -> (success :Bool);  # 7 elements
+    setCartesianImpedance @20 (kX :List(Float64)) -> (success :Bool);  # 6 elements
+
+    # Frame transformations
+    setK @22 (eeTK :List(Float64)) -> (success :Bool);  # 16 elements (4x4 matrix)
+    setEE @23 (neTEe :List(Float64)) -> (success :Bool);  # 16 elements (4x4 matrix)
+
+    # Robot control
+    stopRobot @24 () -> (success :Bool);
+
+    # Health check - returns server timestamp for liveness verification
+    ping @25 () -> (timestamp :UInt64, port :UInt16);
 }

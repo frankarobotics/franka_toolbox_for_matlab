@@ -7,7 +7,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # Set C++ standard
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Set default libfranka folder name
@@ -68,6 +68,10 @@ set(SOURCES
     src/joint_trajectory_motion.cpp
     src/collision_behavior.cpp
     src/load_inertia.cpp
+    src/impedance_control.cpp
+    src/frame_transformations.cpp
+    src/stop_robot.cpp
+    src/ping.cpp
     ${RPC_SRCS}
     ${RPC_HDRS}
 )

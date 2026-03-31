@@ -11,7 +11,8 @@
 
 class FrankaRobotRPCServiceImpl final : public RPCService::Server {
 public:
-    FrankaRobotRPCServiceImpl();
+    FrankaRobotRPCServiceImpl() = default;
+    explicit FrankaRobotRPCServiceImpl(uint16_t port) : server_port_(port) {}
 
     kj::Promise<void> automaticErrorRecovery(
         capnp::CallContext<AutomaticErrorRecoveryParams, AutomaticErrorRecoveryResults> context) override;
@@ -71,7 +72,30 @@ public:
     kj::Promise<void> vacuumGripperStop(
         capnp::CallContext<VacuumGripperStopParams, VacuumGripperStopResults> context) override;
 
+    // Impedance control
+    kj::Promise<void> setJointImpedance(
+        capnp::CallContext<SetJointImpedanceParams, SetJointImpedanceResults> context) override;
+
+    kj::Promise<void> setCartesianImpedance(
+        capnp::CallContext<SetCartesianImpedanceParams, SetCartesianImpedanceResults> context) override;
+
+    // Frame transformations
+    kj::Promise<void> setK(
+        capnp::CallContext<SetKParams, SetKResults> context) override;
+
+    kj::Promise<void> setEE(
+        capnp::CallContext<SetEEParams, SetEEResults> context) override;
+
+    // Robot control
+    kj::Promise<void> stopRobot(
+        capnp::CallContext<StopRobotParams, StopRobotResults> context) override;
+
+    // Health check
+    kj::Promise<void> ping(
+        capnp::CallContext<PingParams, PingResults> context) override;
+
 private:
+    uint16_t server_port_ = 0;  // Stored for ping response
     std::unique_ptr<franka::Robot> robot_;
     std::unique_ptr<franka::Model> model_;
     std::unique_ptr<franka::Gripper> gripper_;

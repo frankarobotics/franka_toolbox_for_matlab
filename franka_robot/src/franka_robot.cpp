@@ -616,6 +616,129 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         return;
     }
 
+    // Set Joint Impedance
+    if (!strcmp("set_joint_impedance", cmd)) {
+        if (nlhs != 1 || nrhs != 3)
+            mexErrMsgTxt("Set Joint Impedance: One output and two inputs (handle, K_theta) expected.");
+        
+        if (!mxIsDouble(prhs[2]) || mxGetNumberOfElements(prhs[2]) != 7)
+            mexErrMsgTxt("Joint impedance must be a 7-element double array.");
+
+        try {
+            std::array<double, 7> K_theta{};
+            double* k_ptr = mxGetPr(prhs[2]);
+            for (size_t i = 0; i < 7; i++) {
+                K_theta[i] = k_ptr[i];
+            }
+            
+            bool success = franka_robot_instance->setJointImpedance(K_theta);
+            plhs[0] = mxCreateLogicalScalar(success);
+        } catch (...) {
+            mexErrMsgTxt("Failed to set joint impedance");
+        }
+        return;
+    }
+
+    // Set Cartesian Impedance
+    if (!strcmp("set_cartesian_impedance", cmd)) {
+        if (nlhs != 1 || nrhs != 3)
+            mexErrMsgTxt("Set Cartesian Impedance: One output and two inputs (handle, K_x) expected.");
+        
+        if (!mxIsDouble(prhs[2]) || mxGetNumberOfElements(prhs[2]) != 6)
+            mexErrMsgTxt("Cartesian impedance must be a 6-element double array.");
+
+        try {
+            std::array<double, 6> K_x{};
+            double* k_ptr = mxGetPr(prhs[2]);
+            for (size_t i = 0; i < 6; i++) {
+                K_x[i] = k_ptr[i];
+            }
+            
+            bool success = franka_robot_instance->setCartesianImpedance(K_x);
+            plhs[0] = mxCreateLogicalScalar(success);
+        } catch (...) {
+            mexErrMsgTxt("Failed to set Cartesian impedance");
+        }
+        return;
+    }
+
+    // Set K (EE_T_K transformation)
+    if (!strcmp("set_k", cmd)) {
+        if (nlhs != 1 || nrhs != 3)
+            mexErrMsgTxt("Set K: One output and two inputs (handle, EE_T_K) expected.");
+        
+        if (!mxIsDouble(prhs[2]) || mxGetNumberOfElements(prhs[2]) != 16)
+            mexErrMsgTxt("EE_T_K must be a 16-element double array (4x4 matrix in column-major format).");
+
+        try {
+            std::array<double, 16> EE_T_K{};
+            double* k_ptr = mxGetPr(prhs[2]);
+            for (size_t i = 0; i < 16; i++) {
+                EE_T_K[i] = k_ptr[i];
+            }
+            
+            bool success = franka_robot_instance->setK(EE_T_K);
+            plhs[0] = mxCreateLogicalScalar(success);
+        } catch (...) {
+            mexErrMsgTxt("Failed to set EE_T_K transformation");
+        }
+        return;
+    }
+
+    // Set EE (NE_T_EE transformation)
+    if (!strcmp("set_ee", cmd)) {
+        if (nlhs != 1 || nrhs != 3)
+            mexErrMsgTxt("Set EE: One output and two inputs (handle, NE_T_EE) expected.");
+        
+        if (!mxIsDouble(prhs[2]) || mxGetNumberOfElements(prhs[2]) != 16)
+            mexErrMsgTxt("NE_T_EE must be a 16-element double array (4x4 matrix in column-major format).");
+
+        try {
+            std::array<double, 16> NE_T_EE{};
+            double* ee_ptr = mxGetPr(prhs[2]);
+            for (size_t i = 0; i < 16; i++) {
+                NE_T_EE[i] = ee_ptr[i];
+            }
+            
+            bool success = franka_robot_instance->setEE(NE_T_EE);
+            plhs[0] = mxCreateLogicalScalar(success);
+        } catch (...) {
+            mexErrMsgTxt("Failed to set NE_T_EE transformation");
+        }
+        return;
+    }
+
+    // Stop Robot
+    if (!strcmp("stop_robot", cmd)) {
+        if (nlhs != 1 || nrhs != 2)
+            mexErrMsgTxt("Stop Robot: One output and one input (handle) expected.");
+        try {
+            bool success = franka_robot_instance->stopRobot();
+            plhs[0] = mxCreateLogicalScalar(success);
+        } catch (...) {
+            mexErrMsgTxt("Failed to stop robot");
+        }
+        return;
+    }
+
+    // Ping (health check)
+    if (!strcmp("ping", cmd)) {
+        if (nlhs != 1 || nrhs != 2)
+            mexErrMsgTxt("Ping: One output and one input (handle) expected.");
+        try {
+            auto [timestamp, port] = franka_robot_instance->ping();
+            
+            // Create struct with timestamp and port
+            const char* fieldnames[] = {"timestamp", "port"};
+            plhs[0] = mxCreateStructMatrix(1, 1, 2, fieldnames);
+            mxSetField(plhs[0], 0, "timestamp", mxCreateDoubleScalar(static_cast<double>(timestamp)));
+            mxSetField(plhs[0], 0, "port", mxCreateDoubleScalar(static_cast<double>(port)));
+        } catch (...) {
+            mexErrMsgTxt("Failed to ping server");
+        }
+        return;
+    }
+
     // Got here, so command not recognized
     mexErrMsgTxt("Command not recognized.");
 }

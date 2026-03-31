@@ -1,20 +1,58 @@
-function franka_toolbox_dist_make()
-    %  Copyright (c) 2024 Franka Robotics GmbH - All Rights Reserved
-    %  This file is subject to the terms and conditions defined in the file
-    %  'LICENSE' , which is part of this package
+function franka_toolbox_dist_make(options)
+    %FRANKA_TOOLBOX_DIST_MAKE Create distribution package for Franka Toolbox
+    %
+    %   franka_toolbox_dist_make() - CI-safe packaging mode: preserve generated artifacts
+    %   franka_toolbox_dist_make('Mode', 'local') - Local packaging with git clean
+    %   franka_toolbox_dist_make('Mode', 'ci', 'OutputName', 'franka') - Specify output name
+    %
+    %   Options:
+    %     Mode       - 'ci' (default) or 'local'
+    %     OutputName - Base name for output file (default: 'franka')
+    %                  Output will be: dist/<OutputName>.mltbx
+    %
+    %   Copyright (c) 2024 Franka Robotics GmbH - All Rights Reserved
+    %   This file is subject to the terms and conditions defined in the file
+    %   'LICENSE' , which is part of this package
+    
+    arguments
+        options.Mode {mustBeMember(options.Mode, {'local', 'ci'})} = 'ci'
+        options.OutputName {mustBeTextScalar} = 'franka'
+    end
+    
+    ci_mode = strcmp(options.Mode, 'ci');
+    output_name = options.OutputName;
     
     %% Clean-up env
-    rm_dir('dist');
-    addpath(genpath('../franka_matlab'));
+    % In CI mode, preserve existing .mltbx files (for multi-package builds)
+    if ci_mode && exist('dist', 'dir')
+        fprintf('CI mode: preserving existing .mltbx files in dist/\n');
+        % Only remove franka_matlab subfolder, keep .mltbx files
+        rm_dir(fullfile('dist', 'franka_matlab'));
+    else
+        rm_dir('dist');
+    end
+    
+    % Add parent franka_matlab if it exists (for local development)
+    parent_franka_matlab = '../franka_matlab';
+    has_parent_franka = exist(parent_franka_matlab, 'dir');
+    if has_parent_franka
+        addpath(genpath(parent_franka_matlab));
+    end
     
     % Get the current directory as project root (since this script is in the root)
     project_root = pwd;
     
     % Check if we're in a git repository before running git clean
-    if exist(fullfile(project_root, '.git'), 'dir')
+    % Skip in CI mode to preserve downloaded artifacts
+    if ~ci_mode && exist(fullfile(project_root, '.git'), 'dir')
+        fprintf('Running git clean (local mode)...\n');
         system(['cd ',project_root,' && git clean -ffxd']);
     else
-        fprintf('Not in a git repository, skipping git clean\n');
+        if ci_mode
+            fprintf('CI mode: skipping git clean to preserve artifacts\n');
+        else
+            fprintf('Not in a git repository, skipping git clean\n');
+        end
     end
 
     %% Copy the Project
@@ -34,24 +72,31 @@ function franka_toolbox_dist_make()
     rm_dir(fullfile(target_dir,'cmake'));
     rm_dir(fullfile(target_dir,'libfranka'));
     rm_dir(fullfile(target_dir,'libfranka_arm'));
-    delete(fullfile(target_dir,'.gitignore'));
-    delete(fullfile(target_dir,'CHANGELOG.md'));
-    delete(fullfile(target_dir,'README.md'));
-    delete(fullfile(target_dir,'LICENCE'));
-    delete(fullfile(target_dir,'franka_toolbox_dist_make.m'));
+    rm_dir(fullfile(target_dir,'docker'));
+    rm_dir(fullfile(target_dir,'.github'));
+    safe_delete(fullfile(target_dir,'.gitignore'));
+    safe_delete(fullfile(target_dir,'CHANGELOG.md'));
+    safe_delete(fullfile(target_dir,'README.md'));
+    safe_delete(fullfile(target_dir,'LICENCE'));
+    safe_delete(fullfile(target_dir,'LICENSE'));
+    safe_delete(fullfile(target_dir,'franka_toolbox_dist_make.m'));
     
     remove_all_files_of_type_recursively('.asv',target_dir,{''});
 
-    %% Remove build artifacts (duplicate line removed)
-
     %% Make the Franka Toolbox for MATLAB
     addpath(genpath(fullfile(project_root,'dist')));
-    rmpath(genpath('../franka_matlab'));
+    if has_parent_franka
+        rmpath(genpath(parent_franka_matlab));
+    end
     addpath(genpath(fullfile(project_root,'dist')));
 
-    matlab.addons.toolbox.packageToolbox(fullfile(target_dir,'franka_toolbox.prj'),fullfile(project_root,'dist','franka'))
+    fprintf('Packaging toolbox as %s.mltbx...\n', output_name);
+    matlab.addons.toolbox.packageToolbox(fullfile(target_dir,'franka_toolbox.prj'),fullfile(project_root,'dist',output_name))
+    fprintf('Toolbox packaged successfully: dist/%s.mltbx\n', output_name);
 
-    addpath(genpath('../franka_matlab'));
+    if has_parent_franka
+        addpath(genpath(parent_franka_matlab));
+    end
     rmpath(genpath(fullfile(project_root,'dist')));
 
 end
@@ -87,6 +132,12 @@ end
 function rm_dir(dir)
 if exist(dir,'dir')
     rmdir(dir,'s');
+end
+end
+
+function safe_delete(filepath)
+if exist(filepath,'file')
+    delete(filepath);
 end
 end
 
