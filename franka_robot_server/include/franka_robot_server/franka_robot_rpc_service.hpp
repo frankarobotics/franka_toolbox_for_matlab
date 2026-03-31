@@ -79,10 +79,6 @@ public:
     kj::Promise<void> setCartesianImpedance(
         capnp::CallContext<SetCartesianImpedanceParams, SetCartesianImpedanceResults> context) override;
 
-    // Guiding mode
-    kj::Promise<void> setGuidingMode(
-        capnp::CallContext<SetGuidingModeParams, SetGuidingModeResults> context) override;
-
     // Frame transformations
     kj::Promise<void> setK(
         capnp::CallContext<SetKParams, SetKResults> context) override;

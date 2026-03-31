@@ -199,32 +199,6 @@ Parameters:
 
 Default values: ``[3000, 3000, 3000, 300, 300, 300]``
 
-Guiding Mode
-^^^^^^^^^^^^
-
-.. code-block:: matlab
-
-    fr.setGuidingMode(guiding_mode, elbow);
-
-Locks or unlocks guiding mode movement in (x, y, z, roll, pitch, yaw) directions.
-
-Parameters:
-    - guiding_mode: 6-element logical array where ``true`` = unlocked, ``false`` = locked
-    - elbow: logical scalar, ``true`` = unlock elbow movement
-
-Returns:
-    - true if successful, false otherwise
-
-Example:
-
-.. code-block:: matlab
-
-    % Unlock all directions and elbow
-    fr.setGuidingMode([true true true true true true], true);
-    
-    % Lock rotation, allow translation and elbow
-    fr.setGuidingMode([true true true false false false], true);
-
 End Effector Frame (NE_T_EE)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

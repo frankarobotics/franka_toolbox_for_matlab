@@ -340,24 +340,6 @@ public:
         }
     }
 
-    // Guiding mode
-    bool setGuidingMode(const std::array<bool, 6>& guiding_mode, bool elbow) {
-        auto request = rpcInterface.setGuidingModeRequest();
-        auto mode = request.initGuidingMode(6);
-        for (size_t i = 0; i < 6; i++) {
-            mode.set(i, guiding_mode[i]);
-        }
-        request.setElbow(elbow);
-
-        try {
-            auto response = request.send().wait(client.getWaitScope());
-            return response.getSuccess();
-        } catch (const kj::Exception& e) {
-            std::cerr << "Franka Robot Error: " << e.getDescription().cStr() << std::endl;
-            throw;
-        }
-    }
-
     // Frame transformations
     bool setK(const std::array<double, 16>& EE_T_K) {
         auto request = rpcInterface.setKRequest();

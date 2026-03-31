@@ -69,7 +69,6 @@ set(SOURCES
     src/collision_behavior.cpp
     src/load_inertia.cpp
     src/impedance_control.cpp
-    src/guiding_mode.cpp
     src/frame_transformations.cpp
     src/stop_robot.cpp
     src/ping.cpp

@@ -120,9 +120,6 @@ interface RPCService {
     setJointImpedance @19 (kTheta :List(Float64)) -> (success :Bool);  # 7 elements
     setCartesianImpedance @20 (kX :List(Float64)) -> (success :Bool);  # 6 elements
 
-    # Guiding mode
-    setGuidingMode @21 (guidingMode :List(Bool), elbow :Bool) -> (success :Bool);  # 6 booleans + 1 boolean
-
     # Frame transformations
     setK @22 (eeTK :List(Float64)) -> (success :Bool);  # 16 elements (4x4 matrix)
     setEE @23 (neTEe :List(Float64)) -> (success :Bool);  # 16 elements (4x4 matrix)

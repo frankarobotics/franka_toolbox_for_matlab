@@ -201,13 +201,6 @@ classdef FrankaRobot < handle
             K_x = obj.Settings.cartesian_impedance_stiffness;
         end
 
-        function result = setGuidingMode(obj, guiding_mode, elbow)
-            obj.checkHandle();
-            validateattributes(guiding_mode, {'logical'}, {'numel', 6});
-            validateattributes(elbow, {'logical'}, {'scalar'});
-            result = franka_robot('set_guiding_mode', obj.frankaRobotHandle, guiding_mode(:)', elbow);
-        end
-
         function result = setK(obj, EE_T_K)
             obj.checkHandle();
             if nargin < 2

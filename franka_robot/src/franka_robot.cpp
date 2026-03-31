@@ -662,33 +662,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         return;
     }
 
-    // Set Guiding Mode
-    if (!strcmp("set_guiding_mode", cmd)) {
-        if (nlhs != 1 || nrhs != 4)
-            mexErrMsgTxt("Set Guiding Mode: One output and three inputs (handle, guiding_mode, elbow) expected.");
-        
-        if (!mxIsLogical(prhs[2]) || mxGetNumberOfElements(prhs[2]) != 6)
-            mexErrMsgTxt("Guiding mode must be a 6-element logical array.");
-        
-        if (!mxIsLogicalScalar(prhs[3]))
-            mexErrMsgTxt("Elbow must be a logical scalar.");
-
-        try {
-            std::array<bool, 6> guiding_mode{};
-            mxLogical* mode_ptr = mxGetLogicals(prhs[2]);
-            for (size_t i = 0; i < 6; i++) {
-                guiding_mode[i] = mode_ptr[i];
-            }
-            bool elbow = mxIsLogicalScalarTrue(prhs[3]);
-            
-            bool success = franka_robot_instance->setGuidingMode(guiding_mode, elbow);
-            plhs[0] = mxCreateLogicalScalar(success);
-        } catch (...) {
-            mexErrMsgTxt("Failed to set guiding mode");
-        }
-        return;
-    }
-
     // Set K (EE_T_K transformation)
     if (!strcmp("set_k", cmd)) {
         if (nlhs != 1 || nrhs != 3)

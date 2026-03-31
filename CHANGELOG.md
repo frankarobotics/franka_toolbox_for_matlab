@@ -5,7 +5,7 @@
    - New auto-build system for franka.mtlbx under github release page. 
    - Latest libfranka build for fr3.
    - FrankaRobot API: Added `FrankaRobotSettings` class for centralized robot configuration.
-   - FrankaRobot API: New methods for impedance control (`setJointImpedance`, `setCartesianImpedance`), guiding mode (`setGuidingMode`), frame transformations (`setEE`, `setK`), and motion control (`stop`).
+   - FrankaRobot API: New methods for impedance control (`setJointImpedance`, `setCartesianImpedance`), frame transformations (`setEE`, `setK`), and motion control (`stop`).
    - FrankaRobot API: Improved server lifecycle handling.
    - FrankaRobot API: Support for multiple `FrankaRobot` instances.
 
