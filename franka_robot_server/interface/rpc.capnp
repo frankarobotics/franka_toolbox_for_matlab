@@ -121,12 +121,12 @@ interface RPCService {
     setCartesianImpedance @20 (kX :List(Float64)) -> (success :Bool);  # 6 elements
 
     # Frame transformations
-    setK @22 (eeTK :List(Float64)) -> (success :Bool);  # 16 elements (4x4 matrix)
-    setEE @23 (neTEe :List(Float64)) -> (success :Bool);  # 16 elements (4x4 matrix)
+    setK @21 (eeTK :List(Float64)) -> (success :Bool);  # 16 elements (4x4 matrix)
+    setEE @22 (neTEe :List(Float64)) -> (success :Bool);  # 16 elements (4x4 matrix)
 
     # Robot control
-    stopRobot @24 () -> (success :Bool);
+    stopRobot @23 () -> (success :Bool);
 
     # Health check - returns server timestamp for liveness verification
-    ping @25 () -> (timestamp :UInt64, port :UInt16);
+    ping @24 () -> (timestamp :UInt64, port :UInt16);
 }
